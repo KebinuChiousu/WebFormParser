@@ -13,31 +13,38 @@ namespace WebFormParser.Utility
     {
         private static string _newLine = Environment.NewLine;
 
-        public static List<List<string>> ParseCode(string fileName)
+        public static Hashtable ParseCode(string fileName)
         {
             var source = File.ReadAllText(fileName);
             var lines = source.Split(_newLine, StringSplitOptions.None);
-            var blocks = new List<List<string>>();
+            var blocks = new Hashtable();
             var block = new List<string>();
             var openTag = false;
             var isCode = false;
+            int blockCnt = 0;
+
+            var aspx = new List<string>();
 
             foreach (var line in lines)
             {
-                bool skip = ParseLine(line, ref openTag);
+                bool skip = ParseLine(line, ref openTag, ref aspx);
                 if (skip)
                     continue;
 
-                if (ProcessLine(line, ref block, ref isCode))
+                if (ProcessLine(line, ref block, ref isCode, ref aspx))
                 {
-                    blocks.Add(block);
+                    blockCnt += 1;
+                    var blockStr = "Render_Logic_" + blockCnt.ToString("D2");
+                    blocks.Add(blockStr, block);
+                    aspx.Insert(aspx.Count - 1," " + blockStr + "();");
                     block = new List<string>();
+
                 }
             }
             return blocks;
         }
 
-        private static bool ParseLine(string line, ref bool openTag)
+        private static bool ParseLine(string line, ref bool openTag, ref List<string> output)
         {
             bool ret = false;
             
@@ -54,11 +61,16 @@ namespace WebFormParser.Utility
                 openTag = false;
                 ret = true;
             }
-            
-            return (ret || openTag);
+
+            bool check = (ret || openTag);
+
+            if (check)
+                output.Add(line);
+
+            return check;
         }
 
-        private static bool ProcessLine(string line, ref List<string> block, ref bool isCode)
+        private static bool ProcessLine(string line, ref List<string> block, ref bool isCode, ref List<string> output)
         {
             int startIdx = 0;
             int len = -1;
@@ -68,7 +80,10 @@ namespace WebFormParser.Utility
             string content = string.Empty;
 
             if (line.Contains("<%"))
+            {
+                output.Add(line);
                 isCode = true;
+            }
 
             if (!isCode)
                 return false;
@@ -82,6 +97,7 @@ namespace WebFormParser.Utility
 
             if (line.Contains("%>"))
             {
+                output.Add(line);
                 isCode = false;
                 ret = true;
             }

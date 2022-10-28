@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections;
+using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp;
 using AngleSharp.Dom;
@@ -18,7 +19,7 @@ namespace WebFormParser
             foreach (var page in pages)
             {
                 Console.WriteLine(page);
-                List<List<string>> blocks = ExtractCode.ParseCode(page);
+                Hashtable blocks = ExtractCode.ParseCode(page);
             }
             Console.WriteLine(pages.Count);
         }
