@@ -18,14 +18,14 @@ namespace WebFormParser.Utility
 
         public static IEnumerable<string> GetFiles(string path)
         {
-            Queue<string> queue = new Queue<string>();
+            Queue<string> queue = new();
             queue.Enqueue(path);
             while (queue.Count > 0)
             {
                 path = queue.Dequeue();
                 try
                 {
-                    foreach (string subDir in Directory.GetDirectories(path))
+                    foreach (var subDir in Directory.GetDirectories(path))
                     {
                         queue.Enqueue(subDir);
                     }
@@ -34,21 +34,20 @@ namespace WebFormParser.Utility
                 {
                     Console.Error.WriteLine(ex);
                 }
-                string[] files = null;
+
+                List<string> files = new();
                 try
                 {
-                    files = Directory.GetFiles(path);
+                    files = Directory.GetFiles(path).ToList();
                 }
                 catch (Exception ex)
                 {
                     Console.Error.WriteLine(ex);
                 }
-                if (files != null)
+
+                foreach(var file in files)
                 {
-                    for (int i = 0; i < files.Length; i++)
-                    {
-                        yield return files[i];
-                    }
+                    yield return file;
                 }
             }
         }
@@ -58,6 +57,10 @@ namespace WebFormParser.Utility
             foreach (var page in pages)
             {
                 var fi = new FileInfo(page);
+
+                if (fi.Directory == null)
+                    continue;
+
                 var srcDir = fi.Directory.ToString();
                 var destDir = srcDir.Replace(src, dest, false, null);
 
@@ -66,15 +69,12 @@ namespace WebFormParser.Utility
             }
         }
 
-        public static void WriteFile(List<string>? lines, string root, string src, string dest, string fileName)
+        public static void WriteFile(List<string>? lines, string src, string dest, string fileName)
         {
             if (lines == null)
                 return;
-            
-            var srcRoot = Path.Combine(root, src);
-            var destRoot = Path.Combine(root, dest);
 
-            var destFileName = fileName.Replace(srcRoot, destRoot);
+            var destFileName = fileName.Replace(src, dest);
             using var outputFile = new StreamWriter(destFileName);
 
             foreach (var line in lines)
@@ -84,26 +84,12 @@ namespace WebFormParser.Utility
         }
 
         public static MethodDeclarationSyntax GetMethodDeclarationSyntax(string returnTypeName,
-            string methodName, string[]? parameterTypes, 
-            string[]? parameterNames, List<string>? body, string modifier = "private")
+            string methodName, List<string>? body, string modifier = "private")
         {
-            ParameterListSyntax parameterList;
             BlockSyntax block;
-
-            if (parameterTypes != null && parameterNames != null)
-            {
-                parameterList =
-                    SyntaxFactory.ParameterList(
-                        SyntaxFactory.SeparatedList(GetParametersList(parameterTypes, parameterNames)));
-            }
-            else
-            {
-                parameterList = SyntaxFactory.ParameterList();
-            }
-
             if (body != null)
             {
-                List<StatementSyntax> statements = new List<StatementSyntax>();
+                List<StatementSyntax> statements = new();
 
                 foreach (var line in body)
                 {
@@ -118,26 +104,20 @@ namespace WebFormParser.Utility
                 block = SyntaxFactory.Block();
             }
 
-            SyntaxToken modify;
-
-            switch (modifier)
+            var modify = modifier switch
             {
-                case "public":
-                    modify = SyntaxFactory.Token(SyntaxKind.PublicKeyword);
-                    break;
-                case "protected":
-                    modify = SyntaxFactory.Token(SyntaxKind.ProtectedKeyword);
-                    break;
-                default:
-                    modify = SyntaxFactory.Token(SyntaxKind.PrivateKeyword);
-                    break;
-            }
+                "public" => SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                "protected" => SyntaxFactory.Token(SyntaxKind.ProtectedKeyword),
+                _ => SyntaxFactory.Token(SyntaxKind.PrivateKeyword)
+            };
 
-            return SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(returnTypeName), methodName)
+            var method = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(returnTypeName), methodName)
                 .AddModifiers(modify)
                 .WithBody(block)
                 // Annotate that this node should be formatted
                 .WithAdditionalAnnotations(Formatter.Annotation);
+
+            return method;
         }
 
         private static IEnumerable<ParameterSyntax> GetParametersList(string[] parameterTypes, string[] paramterNames)
