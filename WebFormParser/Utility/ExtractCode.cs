@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using AngleSharp.Html.Dom;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -35,23 +36,89 @@ namespace WebFormParser.Utility
 
                 if (ProcessLine(line, ref block, ref isCode, ref aspx))
                 {
-                    if (block.Count <= 1)
-                    {
-                        block = new List<string>();
+                    if (block.Count == 0)
                         continue;
-                    }
+                    
+                    if (!ValidateCode(ref block, ref aspx))
+                        continue;
 
                     blockCnt += 1;
                     var blockStr = "Render_Logic_" + blockCnt.ToString("D2");
                     blocks.Add(blockStr, block);
-                    aspx.Insert(aspx.Count - 1, "<% " + blockStr + "(); %>");
+                    aspx.Add("<% " + blockStr + "(); %>");
                     block = new List<string>();
-
                 }
             }
             blocks.Add(fi.Name, aspx);
             return blocks;
         }
+
+        private static bool ValidateCode(ref List<string> block, ref List<string> aspx)
+        {
+           
+            bool check;
+            //var newBlock = new List<string>();
+
+            /*
+            List<char> symbols = new()
+            {
+                '{',
+                '}'
+            };
+
+            if (CleanBlock(block, symbols, ref newBlock)) 
+                return true;
+            */
+
+            int open = Util.CountChar(block, '{');
+            int close = Util.CountChar(block, '}');
+
+            check = (open == close);
+
+
+            if (check)
+            {
+                check = Util.CheckIf(block);
+
+                if (block[0].Contains("{"))
+                    check = false;
+                if (block[0].Contains("}"))
+                    check = false;
+                if (block[0].Contains("readonly"))
+                    check = false;
+                if (block[^1].Contains("{"))
+                    return false;
+                if (block[^1].Contains("}"))
+                    return false;
+
+                if (check)
+                    return true;
+            }
+
+            aspx.Add("<%");
+            foreach (var line in block)
+            {
+                aspx.Add(line);
+            }
+            aspx.Add("%>");
+            block = new List<string>();
+
+            /*
+            if (newBlock.Count == 0)
+            {
+                return false;
+            }
+            else 
+            {
+                block = newBlock;
+                return true;
+            }
+            */
+
+            return check;
+        }
+
+
 
         private static bool ParseLine(string line, ref bool openTag)
         {

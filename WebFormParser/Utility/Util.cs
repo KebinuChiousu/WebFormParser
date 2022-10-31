@@ -132,6 +132,78 @@ namespace WebFormParser.Utility
             }
         }
 
+        public static bool CleanBlock(List<string> block, List<char> symbols, ref List<string> newBlock)
+        {
+            foreach (var line in block)
+            {
+                foreach (char c in symbols)
+                {
+                    if (line.Contains(c))
+                        return false;
+
+                }
+
+                newBlock.Add(line);
+            }
+
+            return true;
+        }
+
+        public static int CountChar(List<string> block, char symbol)
+        {
+            int ret = 0;
+
+            foreach (var line in block)
+            {
+                var code = line.Trim();
+                foreach (char c in code)
+                {
+                    if (c == symbol)
+                        ret++;
+                }
+            }
+            return ret;
+        }
+
+        public static bool CheckIf(List<string> block)
+        {
+            bool ret = true;
+
+            bool hasIf = false;
+            bool hasElse = false;
+
+            foreach (var line in block)
+            {
+                var code = line.TrimStart();
+
+                if (!code.StartsWith("if"))
+                    continue;
+                
+                hasIf = true;
+                break;
+            }
+
+            foreach (var line in block)
+            {
+                var code = line.TrimStart();
+
+                if (!code.StartsWith("else"))
+                    continue;
+                
+                hasElse = true;
+                break;
+            }
+
+            if (hasElse)
+                ret = (hasIf == hasElse);
+            else
+            {
+                ret = true;
+            }
+
+            return ret;
+        }
+
         public static string[] RemoveAt(string[] source, int index)
         {
             string[] dest = new string[source.Length - 1];
