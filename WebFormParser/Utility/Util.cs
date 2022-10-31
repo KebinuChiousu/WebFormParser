@@ -66,12 +66,15 @@ namespace WebFormParser.Utility
             }
         }
 
-        public static void WriteFile(List<string>? lines, string root, string dest, string fileName)
+        public static void WriteFile(List<string>? lines, string root, string src, string dest, string fileName)
         {
             if (lines == null)
                 return;
             
-            var destFileName = Path.Combine(root, dest, fileName);
+            var srcRoot = Path.Combine(root, src);
+            var destRoot = Path.Combine(root, dest);
+
+            var destFileName = fileName.Replace(srcRoot, destRoot);
             using var outputFile = new StreamWriter(destFileName);
 
             foreach (var line in lines)
@@ -80,7 +83,9 @@ namespace WebFormParser.Utility
             }
         }
 
-        public static MethodDeclarationSyntax GetMethodDeclarationSyntax(string returnTypeName, string methodName, string[]? parameterTypes, string[]? parameterNames, List<string>? body)
+        public static MethodDeclarationSyntax GetMethodDeclarationSyntax(string returnTypeName,
+            string methodName, string[]? parameterTypes, 
+            string[]? parameterNames, List<string>? body, string modifier = "private")
         {
             ParameterListSyntax parameterList;
             BlockSyntax block;
@@ -98,30 +103,39 @@ namespace WebFormParser.Utility
 
             if (body != null)
             {
-                SyntaxList<StatementSyntax> statements = new SyntaxList<StatementSyntax>();
+                List<StatementSyntax> statements = new List<StatementSyntax>();
 
                 foreach (var line in body)
                 {
                     var statement = SyntaxFactory.ParseStatement(line);
                     statements.Add(statement);
                 }
-                block = SyntaxFactory.Block(statements);
+
+                block = SyntaxFactory.Block().AddStatements(statements.ToArray());
             }
             else
             {
                 block = SyntaxFactory.Block();
             }
 
-            return SyntaxFactory.MethodDeclaration(attributeLists: SyntaxFactory.List<AttributeListSyntax>(), 
-                    modifiers: SyntaxFactory.TokenList(), 
-                    returnType: SyntaxFactory.ParseTypeName(returnTypeName), 
-                    explicitInterfaceSpecifier: null, 
-                    identifier: SyntaxFactory.Identifier(methodName), 
-                    typeParameterList: null, 
-                    parameterList: parameterList, 
-                    constraintClauses: SyntaxFactory.List<TypeParameterConstraintClauseSyntax>(), 
-                    body: block, 
-                    semicolonToken: SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+            SyntaxToken modify;
+
+            switch (modifier)
+            {
+                case "public":
+                    modify = SyntaxFactory.Token(SyntaxKind.PublicKeyword);
+                    break;
+                case "protected":
+                    modify = SyntaxFactory.Token(SyntaxKind.ProtectedKeyword);
+                    break;
+                default:
+                    modify = SyntaxFactory.Token(SyntaxKind.PrivateKeyword);
+                    break;
+            }
+
+            return SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(returnTypeName), methodName)
+                .AddModifiers(modify)
+                .WithBody(block)
                 // Annotate that this node should be formatted
                 .WithAdditionalAnnotations(Formatter.Annotation);
         }
