@@ -388,7 +388,7 @@ namespace WebFormParser.csp
             return jsTag;
         }
 
-        private static IElement SetJsSrcTag(IElement jsTag, ref IDocument document)
+        private static IElement? SetJsSrcTag(IElement jsTag, ref IDocument document)
         {
 
             string nodeName = "HEAD";
@@ -537,7 +537,7 @@ namespace WebFormParser.csp
             var i = 0;
 
             var delimiters = "`'\"";
-            string currentDelimiter = null;
+            string? currentDelimiter = null;
 
             var isEscape = false;
             var isComment = false;

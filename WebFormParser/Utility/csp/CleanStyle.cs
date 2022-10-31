@@ -32,31 +32,22 @@ namespace WebFormParser.csp
             var linkTags = document.GetElementsByTagName("link");
             foreach (var linkTag in linkTags)
             {
+                if (linkTag.Parent == null)
+                    continue;
+                    
+                var nodeName = linkTag.Parent.NodeName;
+                var removedSuccessful = CssRemoveFromSource(linkTag);
 
-                string nodeName = "HEAD";
-                if (linkTag != null && linkTag.Parent != null)
-                {
-                    nodeName = linkTag.Parent.NodeName;
-                }
-                if (nodeName.ToLower() != "HEAD".ToLower())
-                {
-                    bool removedSuccessful = CssRemoveFromSource(linkTag);
-                    if (removedSuccessful)
-                    {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-#pragma warning disable CS8604 // Possible null reference argument.
-                        linkTag.Parent.RemoveChild(linkTag);
-#pragma warning restore CS8604 // Possible null reference argument.
-                        bool addedSuccessful = Util.addToHead(linkTag.OuterHtml, filename);
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                        if (addedSuccessful)
-                        {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                            document.Head.Append(linkTag);
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                        }
-                    }
-                }
+                if (!removedSuccessful)
+                    continue;
+
+                linkTag.Parent?.RemoveChild(linkTag);
+                var addedSuccessful = Util.addToHead(linkTag.OuterHtml, filename);
+                
+                if (!addedSuccessful)
+                    continue;
+
+                document.Head?.Append(linkTag);
             }
 
             var elements = document.All;
