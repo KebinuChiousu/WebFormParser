@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Text;
-using System.Text.RegularExpressions;
 using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
@@ -14,15 +13,28 @@ namespace WebFormParser
     {
         static void Main(string[] args)
         {
-            List<string> pages = GetPageList("D:\\Users\\kmeredith\\source\\repos\\NDE\\Apps\\bfims.gmstudio\\BFIMS");
+            var root = "D:\\Users\\kmeredith\\source\\repos\\NDE\\Apps\\bfims.gmstudio";
+            var src = "BFIMS";
+            var dest = "BFIMS.new"; 
+
+            List<string> pages = GetPageList(root + "\\" + src);
+            Util.MakeFolders(pages, src, dest);
 
             foreach (var page in pages)
             {
                 Console.WriteLine(page);
                 Hashtable blocks = ExtractCode.ParseCode(page);
+                var fi = new FileInfo(page);
+                var fileName = fi.Name;
+                var aspx = (List<string>?) blocks[fileName];
+                Util.WriteFile(aspx, root, dest, fileName);
+                blocks.Remove(fileName);
+                ExtractCode.ProcessCode(blocks, root, dest, page);
             }
             Console.WriteLine(pages.Count);
         }
+
+
 
         private static List<string> GetPageList(string targetFolder)
         {
@@ -89,6 +101,5 @@ namespace WebFormParser
                 }
             }
         }
-
     }
 }

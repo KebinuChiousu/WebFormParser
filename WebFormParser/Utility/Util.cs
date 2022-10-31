@@ -5,6 +5,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AngleSharp.Dom;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using WebFormParser.model;
 
 namespace WebFormParser.Utility
@@ -46,6 +50,91 @@ namespace WebFormParser.Utility
                         yield return files[i];
                     }
                 }
+            }
+        }
+
+        public static void MakeFolders(List<string> pages, string src, string dest)
+        {
+            foreach (var page in pages)
+            {
+                var fi = new FileInfo(page);
+                var srcDir = fi.Directory.ToString();
+                var destDir = srcDir.Replace(src, dest, false, null);
+
+                if (!Directory.Exists(destDir))
+                    Directory.CreateDirectory(destDir);
+            }
+        }
+
+        public static void WriteFile(List<string>? lines, string root, string dest, string fileName)
+        {
+            if (lines == null)
+                return;
+            
+            var destFileName = Path.Combine(root, dest, fileName);
+            using var outputFile = new StreamWriter(destFileName);
+
+            foreach (var line in lines)
+            {
+                outputFile.WriteLine(line);
+            }
+        }
+
+        public static MethodDeclarationSyntax GetMethodDeclarationSyntax(string returnTypeName, string methodName, string[]? parameterTypes, string[]? parameterNames, List<string>? body)
+        {
+            ParameterListSyntax parameterList;
+            BlockSyntax block;
+
+            if (parameterTypes != null && parameterNames != null)
+            {
+                parameterList =
+                    SyntaxFactory.ParameterList(
+                        SyntaxFactory.SeparatedList(GetParametersList(parameterTypes, parameterNames)));
+            }
+            else
+            {
+                parameterList = SyntaxFactory.ParameterList();
+            }
+
+            if (body != null)
+            {
+                SyntaxList<StatementSyntax> statements = new SyntaxList<StatementSyntax>();
+
+                foreach (var line in body)
+                {
+                    var statement = SyntaxFactory.ParseStatement(line);
+                    statements.Add(statement);
+                }
+                block = SyntaxFactory.Block(statements);
+            }
+            else
+            {
+                block = SyntaxFactory.Block();
+            }
+
+            return SyntaxFactory.MethodDeclaration(attributeLists: SyntaxFactory.List<AttributeListSyntax>(), 
+                    modifiers: SyntaxFactory.TokenList(), 
+                    returnType: SyntaxFactory.ParseTypeName(returnTypeName), 
+                    explicitInterfaceSpecifier: null, 
+                    identifier: SyntaxFactory.Identifier(methodName), 
+                    typeParameterList: null, 
+                    parameterList: parameterList, 
+                    constraintClauses: SyntaxFactory.List<TypeParameterConstraintClauseSyntax>(), 
+                    body: block, 
+                    semicolonToken: SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                // Annotate that this node should be formatted
+                .WithAdditionalAnnotations(Formatter.Annotation);
+        }
+
+        private static IEnumerable<ParameterSyntax> GetParametersList(string[] parameterTypes, string[] paramterNames)
+        {
+            for (int i = 0; i < parameterTypes.Length; i++)
+            {
+                yield return SyntaxFactory.Parameter(attributeLists: SyntaxFactory.List<AttributeListSyntax>(),
+                    modifiers: SyntaxFactory.TokenList(),
+                    type: SyntaxFactory.ParseTypeName(parameterTypes[i]),
+                    identifier: SyntaxFactory.Identifier(paramterNames[i]),
+                    @default: null);
             }
         }
 
@@ -122,10 +211,12 @@ namespace WebFormParser.Utility
         {
             return addToElement("\t\t\t" + outerHtml, filename, "/form");
         }
+
         public static bool addToHead(string outerHtml, string filename)
         {
             return addToElement("\t\t" + outerHtml, filename, "/head");
         }
+
         public static bool addToElement(string outerHtml, string filename, string element)
         {
             string[] arrayOfLines = Source.source.Split("\n");
