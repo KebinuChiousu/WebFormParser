@@ -26,9 +26,12 @@ namespace WebFormParser.Utility
 
             foreach (var line in lines)
             {
-                bool skip = ParseLine(line, ref openTag, ref aspx);
+                bool skip = ParseLine(line, ref openTag);
                 if (skip)
+                {
+                    aspx.Add(line);
                     continue;
+                }
 
                 if (ProcessLine(line, ref block, ref isCode, ref aspx))
                 {
@@ -41,7 +44,7 @@ namespace WebFormParser.Utility
                     blockCnt += 1;
                     var blockStr = "Render_Logic_" + blockCnt.ToString("D2");
                     blocks.Add(blockStr, block);
-                    aspx.Insert(aspx.Count - 1, " " + blockStr + "();");
+                    aspx.Insert(aspx.Count - 1, "<% " + blockStr + "(); %>");
                     block = new List<string>();
 
                 }
@@ -50,9 +53,12 @@ namespace WebFormParser.Utility
             return blocks;
         }
 
-        private static bool ParseLine(string line, ref bool openTag, ref List<string> output)
+        private static bool ParseLine(string line, ref bool openTag)
         {
             bool ret = false;
+
+            if (string.IsNullOrWhiteSpace(line))
+                return false;
 
             if (line.Contains("<%--"))
                 openTag = true;
@@ -69,10 +75,6 @@ namespace WebFormParser.Utility
             }
 
             bool check = (ret || openTag);
-
-            if (check)
-                output.Add(line);
-
             return check;
         }
 
@@ -80,14 +82,25 @@ namespace WebFormParser.Utility
         {
             var ret = false;
 
-            if (line.Contains("<%"))
+            if (string.IsNullOrWhiteSpace(line))
+                return false;
+
+            if (line.Contains("<%") && line.Contains("%>"))
             {
                 output.Add(line);
+                return false;
+            }
+
+            if (line.Contains("<%"))
+            {
                 isCode = true;
             }
 
             if (!isCode)
+            {
+                output.Add(line);
                 return false;
+            }
 
             var content = line.Replace("<%", "");
             content = content.Replace("%>", "");
@@ -99,7 +112,6 @@ namespace WebFormParser.Utility
             if (!line.Contains("%>"))
                 return ret;
 
-            output.Add(line);
             isCode = false;
             ret = true;
 
