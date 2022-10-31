@@ -14,7 +14,7 @@ namespace WebFormParser
         [Option('s', "src", HelpText = "Source Project Folder", Required = true)]
         public string Source { get; set; }
 
-        [Option('d', "destination", HelpText = "Destination Project Folder", Required = true)]
+        [Option('d', "dest", HelpText = "Destination Project Folder", Required = true)]
         public string Destination { get; set; }
     }
 }
