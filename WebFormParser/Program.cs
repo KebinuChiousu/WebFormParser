@@ -1,8 +1,10 @@
 ﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Text;
 using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
+using CommandLine;
 using WebFormParser.csp;
 using WebFormParser.model;
 using WebFormParser.Utility;
@@ -13,11 +15,18 @@ namespace WebFormParser
     {
         static void Main(string[] args)
         {
-            var root = "D:\\Users\\kmeredith\\source\\repos\\NDE\\Apps\\bfims.gmstudio";
-            var src = "BFIMS";
-            var dest = "BFIMS.new"; 
+            CommandLine.Parser.Default.ParseArguments<Options>(args)
+                .WithParsed(RunOptions);
+        }
 
-            List<string> pages = GetPageList(root + "\\" + src);
+        static void RunOptions(Options opts)
+        {
+            CleanCode(opts.Source, opts.Destination);
+        }
+
+        private static void CleanCode(string src, string dest)
+        {
+            List<string> pages = GetPageList(src);
             Util.MakeFolders(pages, src, dest);
 
             foreach (var page in pages)
@@ -27,24 +36,22 @@ namespace WebFormParser
                 var fi = new FileInfo(page);
                 var fileName = fi.Name;
                 var aspx = (List<string>?) blocks[fileName];
-                Util.WriteFile(aspx, root, dest, fileName);
+                Util.WriteFile(aspx,  src, dest, page);
                 blocks.Remove(fileName);
-                ExtractCode.ProcessCode(blocks, root, dest, page);
+                var code = ExtractCode.ProcessCode(blocks, page);
+                Util.WriteFile(code,  src, dest, page + ".cs");
             }
             Console.WriteLine(pages.Count);
         }
 
-
-
         private static List<string> GetPageList(string targetFolder)
         {
-            List<string> result = new List<string>();
+            List<string> result = new();
 
-            foreach (string fileName in Util.GetFiles(targetFolder))
+            foreach (var fileName in Util.GetFiles(targetFolder))
             {
-                string extension = Path.GetExtension(fileName);
-                string fileNameEnd = Path.GetFileName(fileName);
-                string[] validExtensions = new string[] { ".aspx" };
+                var extension = Path.GetExtension(fileName);
+                var validExtensions = new string[] { ".aspx" };
                 if (validExtensions.Contains(extension))
                 {
                     result.Add(fileName);
@@ -94,11 +101,10 @@ namespace WebFormParser
                 {
                     Source.source = line1 + "\n" + Source.source;
                 }
-                using (FileStream fs = File.Create(filename))
-                {
-                    byte[] info = new UTF8Encoding(true).GetBytes(Source.source);
-                    fs.Write(info, 0, info.Length);
-                }
+
+                using FileStream fs = File.Create(filename);
+                byte[] info = new UTF8Encoding(true).GetBytes(Source.source);
+                fs.Write(info, 0, info.Length);
             }
         }
     }
