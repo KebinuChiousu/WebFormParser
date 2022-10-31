@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Dynamic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace WebFormParser.Utility
 {
@@ -111,22 +105,21 @@ namespace WebFormParser.Utility
             return ret;
         }
 
-        public static void ProcessCode(Hashtable blocks, string root, string dest, string fileName)
+        public static List<string>? ProcessCode(Hashtable blocks, string root, string src, string dest, string fileName)
         {
             var fi = new FileInfo(fileName + ".cs");
             var srcFileName = fi.Name;
             var srcDirectory = fi.Directory;
-            var destFileName = Path.Combine(root, dest, srcFileName);
 
             if (srcDirectory == null)
-                return;
+                return null;
 
-            var src = Path.Combine(srcDirectory.ToString(), srcFileName);
+            var sourceFile = Path.Combine(srcDirectory.ToString(), srcFileName);
 
-            if (!File.Exists(src))
-                return;
+            if (!File.Exists(sourceFile))
+                return null;
 
-            var code = File.ReadAllText(src);
+            var code = File.ReadAllText(sourceFile);
             var tree = CSharpSyntaxTree.ParseText(code);
             var codeRoot = tree.GetCompilationUnitRoot();
             ClassDeclarationSyntax? codeClass;
@@ -140,7 +133,7 @@ namespace WebFormParser.Utility
                 codeClass = (ClassDeclarationSyntax?) codeRoot.Members[0]; 
             }
             
-            if (codeClass == null) return;
+            if (codeClass == null) return null;
             var newCodeClass = codeClass;
 
             foreach (var key in blocks.Keys)
@@ -150,13 +143,18 @@ namespace WebFormParser.Utility
 
                 var blockName = key.ToString();
                 var block = (List<string>?)blocks[key];
-                var methodToInsert = Util.GetMethodDeclarationSyntax("void", blockName, null, null, block);
+                var methodToInsert = Util.GetMethodDeclarationSyntax("void", blockName, 
+                    null, null, block, "protected");
                 newCodeClass = newCodeClass.AddMembers(methodToInsert);
             }
 
+            SyntaxAnnotation annotation = Formatter.Annotation;
+
             var newRoot = codeRoot.ReplaceNode(codeClass, newCodeClass);
-            using var outputFile = new StreamWriter(destFileName);
-            newRoot.WriteTo(outputFile);
+            code = newRoot.NormalizeWhitespace().ToFullString();
+            List<string> ret = code.Split(Environment.NewLine).ToList();
+
+            return ret;
         }
     }
 }
