@@ -8,7 +8,7 @@ namespace WebFormParser.Utility
 {
     public static class ExtractCode
     {
-        private static string _newLine = Environment.NewLine;
+        private static readonly string _newLine = Environment.NewLine;
 
         public static Hashtable ParseCode(string fileName)
         {
@@ -32,6 +32,12 @@ namespace WebFormParser.Utility
 
                 if (ProcessLine(line, ref block, ref isCode, ref aspx))
                 {
+                    if (block.Count <= 1)
+                    {
+                        block = new List<string>();
+                        continue;
+                    }
+
                     blockCnt += 1;
                     var blockStr = "Render_Logic_" + blockCnt.ToString("D2");
                     blocks.Add(blockStr, block);
@@ -72,12 +78,7 @@ namespace WebFormParser.Utility
 
         private static bool ProcessLine(string line, ref List<string> block, ref bool isCode, ref List<string> output)
         {
-            int startIdx = 0;
-            int len = -1;
-
-            bool ret = false;
-
-            string content = string.Empty;
+            var ret = false;
 
             if (line.Contains("<%"))
             {
@@ -88,24 +89,24 @@ namespace WebFormParser.Utility
             if (!isCode)
                 return false;
 
-            content = line.Replace("<%", "");
+            var content = line.Replace("<%", "");
             content = content.Replace("%>", "");
             content = content.Trim();
 
             if (isCode && !string.IsNullOrEmpty(content))
                 block.Add(content);
 
-            if (line.Contains("%>"))
-            {
-                output.Add(line);
-                isCode = false;
-                ret = true;
-            }
+            if (!line.Contains("%>"))
+                return ret;
+
+            output.Add(line);
+            isCode = false;
+            ret = true;
 
             return ret;
         }
 
-        public static List<string>? ProcessCode(Hashtable blocks, string root, string src, string dest, string fileName)
+        public static List<string>? ProcessCode(Hashtable blocks, string fileName)
         {
             var fi = new FileInfo(fileName + ".cs");
             var srcFileName = fi.Name;
@@ -126,13 +127,13 @@ namespace WebFormParser.Utility
 
             if (codeRoot.Members[0].Kind() == SyntaxKind.NamespaceDeclaration)
             {
-                codeClass = (ClassDeclarationSyntax?) ((NamespaceDeclarationSyntax) codeRoot.Members[0]).Members[0];
+                codeClass = (ClassDeclarationSyntax?)((NamespaceDeclarationSyntax)codeRoot.Members[0]).Members[0];
             }
             else
             {
-                codeClass = (ClassDeclarationSyntax?) codeRoot.Members[0]; 
+                codeClass = (ClassDeclarationSyntax?)codeRoot.Members[0];
             }
-            
+
             if (codeClass == null) return null;
             var newCodeClass = codeClass;
 
@@ -142,9 +143,11 @@ namespace WebFormParser.Utility
                     continue;
 
                 var blockName = key.ToString();
+
+                if (blockName == null) continue;
+
                 var block = (List<string>?)blocks[key];
-                var methodToInsert = Util.GetMethodDeclarationSyntax("void", blockName, 
-                    null, null, block, "protected");
+                var methodToInsert = Util.GetMethodDeclarationSyntax("void", blockName, block, "protected");
                 newCodeClass = newCodeClass.AddMembers(methodToInsert);
             }
 
