@@ -13,6 +13,8 @@ namespace WebFormParser
 {
     internal class Program
     {
+        private static int _stage = 0;
+
         static void Main(string[] args)
         {
             CommandLine.Parser.Default.ParseArguments<Options>(args)
@@ -21,12 +23,20 @@ namespace WebFormParser
 
         static void RunOptions(Options opts)
         {
-            CleanCode(opts.Source, opts.Destination);
+            _stage = opts.Stage;
+
+            if (_stage <= 1)
+                CleanCode(opts.Source, opts.Destination);
+            if (_stage == 2)
+                FixCode(opts.Source, opts.Destination);
+
         }
 
         private static void CleanCode(string src, string dest)
         {
-            List<string> pages = GetPageList(src);
+            Console.WriteLine("Phase 1: Determine code to be extracted from aspx page.");
+            
+            var pages = GetPageList(src);
             Util.MakeFolders(pages, src, dest);
 
             foreach (var page in pages)
@@ -41,18 +51,41 @@ namespace WebFormParser
                 var code = ExtractCode.ProcessCode(blocks, page);
                 Util.WriteFile(code,  src, dest, page + ".cs");
             }
-            Console.WriteLine(pages.Count);
+
+            _stage++;
         }
 
-        private static List<string> GetPageList(string targetFolder)
+        private static void FixCode(string src, string dest)
+        {
+            Console.WriteLine("Phase 2: Analyzing C# code and applying custom fixes.");
+            
+            var pages = GetPageList(src);
+            
+            Dictionary<string, List<string>> source = new();
+
+            foreach (var page in pages)
+            {
+                var destPage = page.Replace(src, dest);
+                var srcName = File.Exists(destPage + ".cs") ? destPage + ".cs" : page + ".cs";
+                var code = File.ReadAllLines(srcName).ToList();
+                source.Add(srcName, code);
+            }
+
+            Console.WriteLine("Generic Fix 1: Inserting missing using statements");
+            source = ExtractCode.AddUsing(source);
+            
+            Util.WriteFiles(source, src, dest);
+        }
+
+        private static List<string> GetPageList(string targetFolder, string ext=".aspx")
         {
             List<string> result = new();
 
             foreach (var fileName in Util.GetFiles(targetFolder))
             {
                 var extension = Path.GetExtension(fileName);
-                var validExtensions = new string[] { ".aspx" };
-                if (validExtensions.Contains(extension))
+                var validExtension = ext;
+                if (validExtension.Equals(extension))
                 {
                     result.Add(fileName);
                 }

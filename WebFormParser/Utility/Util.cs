@@ -15,6 +15,18 @@ namespace WebFormParser.Utility
 {
     public static class Util
     {
+        public static bool PageContains(List<string> page, string search)
+        {
+            foreach (var line in page)
+            {
+                if (!line.Contains(search))
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
 
         public static IEnumerable<string> GetFiles(string path)
         {
@@ -45,7 +57,7 @@ namespace WebFormParser.Utility
                     Console.Error.WriteLine(ex);
                 }
 
-                foreach(var file in files)
+                foreach (var file in files)
                 {
                     yield return file;
                 }
@@ -68,7 +80,6 @@ namespace WebFormParser.Utility
                     Directory.CreateDirectory(destDir);
             }
         }
-
         public static void WriteFile(List<string>? lines, string src, string dest, string fileName)
         {
             if (lines == null)
@@ -80,6 +91,34 @@ namespace WebFormParser.Utility
             foreach (var line in lines)
             {
                 outputFile.WriteLine(line);
+            }
+        }
+
+        public static void WriteFiles(Dictionary<string, List<string>> data, string src, string dest)
+        {
+            if (data.Count == 0)
+                return;
+
+            foreach (var fileName in data.Keys)
+            {
+                var destFileName = fileName.Replace(src, dest);
+                var fi = new FileInfo(destFileName);
+
+                if (string.IsNullOrEmpty(fi.DirectoryName))
+                    return;
+
+                var destDir = fi.DirectoryName;
+                
+                if (!Directory.Exists(destDir))
+                    Directory.CreateDirectory(destDir);
+                
+                using var outputFile = new StreamWriter(destFileName);
+                var lines = data[fileName];
+                
+                foreach (var line in lines)
+                {
+                    outputFile.WriteLine(line);
+                }
             }
         }
 
@@ -178,7 +217,7 @@ namespace WebFormParser.Utility
 
                 if (!code.StartsWith("if"))
                     continue;
-                
+
                 hasIf = true;
                 break;
             }
@@ -189,7 +228,7 @@ namespace WebFormParser.Utility
 
                 if (!code.StartsWith("else"))
                     continue;
-                
+
                 hasElse = true;
                 break;
             }

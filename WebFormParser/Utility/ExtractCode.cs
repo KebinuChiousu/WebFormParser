@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.Diagnostics;
+using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -118,8 +120,6 @@ namespace WebFormParser.Utility
             return check;
         }
 
-
-
         private static bool ParseLine(string line, ref bool openTag)
         {
             bool ret = false;
@@ -238,5 +238,75 @@ namespace WebFormParser.Utility
 
             return ret;
         }
+
+        
+
+        #region "Add Using Statement"
+
+        public static Dictionary<string, List<string>> AddUsing(Dictionary<string, List<string>> source)
+        {
+            Dictionary<string, List<string>> ret = new();
+
+            foreach (var page in source.Keys)
+            {
+                var src = source[page];
+                List<string> usingList = new();
+
+                if (Util.PageContains(src,"HttpContext"))
+                    if (!Util.PageContains(src, "using System.Web"))
+                        usingList.Add("System.Web");
+
+                if (usingList.Count == 0)
+                    continue;
+
+                src = InsertUsing(page, usingList);
+
+                if (src.Count > 0)
+                    ret.Add(page + ".cs", src);
+            }
+
+            return ret;
+        }
+
+
+
+        private static List<string> InsertUsing(string fileName, List<string> usingList)
+        {
+            List<string> ret = new();
+            var code = File.ReadAllText(fileName);
+            var tree = CSharpSyntaxTree.ParseText(code);
+
+            List<UsingDirectiveSyntax> udsList = new();
+
+            foreach (var entry in usingList)
+            {
+                var insertTree = CSharpSyntaxTree.ParseText("using " + entry + ";" + Environment.NewLine);
+                if (insertTree.GetRoot().ChildNodes().First() is UsingDirectiveSyntax uds)
+                    udsList.Add(uds);
+            }
+
+            if (udsList.Count == 0)
+                return ret;
+
+            var codeRoot = UpdateUsingDirectives(tree, udsList);
+            var annotation = Formatter.Annotation;
+
+            if (codeRoot == null)
+                return ret;
+            
+            code = codeRoot.NormalizeWhitespace().ToFullString();
+            ret = code.Split(Environment.NewLine).ToList();
+
+            return ret;
+        }
+
+        private static CompilationUnitSyntax? UpdateUsingDirectives(SyntaxTree originalTree, List<UsingDirectiveSyntax> usingList)
+        {
+            var rootNode = originalTree.GetRoot() as CompilationUnitSyntax;
+            rootNode = rootNode?.AddUsings(usingList.ToArray());
+            return rootNode;
+        }
+
+        #endregion
     }
 }
