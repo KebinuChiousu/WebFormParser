@@ -66,7 +66,7 @@ namespace WebFormParser
             foreach (var page in pages)
             {
                 var destPage = page.Replace(src, dest);
-                var srcName = File.Exists(destPage + ".cs") ? destPage + ".cs" : page + ".cs";
+                var srcName = File.Exists(destPage) ? destPage : page;
                 var code = File.ReadAllLines(srcName).ToList();
                 source.Add(srcName, code);
             }
