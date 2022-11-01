@@ -259,13 +259,10 @@ namespace WebFormParser.Utility
                 if (usingList.Count == 0)
                     continue;
 
-                var fi = new FileInfo(page);
-                var srcFileName = fi.Name.Contains(".cs") ? page : page + ".cs";
-
-                src = InsertUsing(srcFileName, usingList);
+                src = InsertUsing(page, usingList);
 
                 if (src.Count > 0)
-                    ret.Add(srcFileName, src);
+                    ret.Add(page, src);
             }
 
             return ret;
