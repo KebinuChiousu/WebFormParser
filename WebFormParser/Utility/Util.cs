@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,24 +11,14 @@ using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using WebFormParser.model;
+using System.Reflection;
 
 namespace WebFormParser.Utility
 {
     public static class Util
     {
-        public static bool PageContains(List<string> page, string search)
-        {
-            foreach (var line in page)
-            {
-                if (!line.Contains(search))
-                    continue;
 
-                return true;
-            }
-
-            return false;
-        }
-
+        #region "IO Helpers"
         public static IEnumerable<string> GetFiles(string path)
         {
             Queue<string> queue = new();
@@ -80,6 +71,7 @@ namespace WebFormParser.Utility
                     Directory.CreateDirectory(destDir);
             }
         }
+
         public static void WriteFile(List<string>? lines, string src, string dest, string fileName)
         {
             if (lines == null)
@@ -108,19 +100,23 @@ namespace WebFormParser.Utility
                     return;
 
                 var destDir = fi.DirectoryName;
-                
+
                 if (!Directory.Exists(destDir))
                     Directory.CreateDirectory(destDir);
-                
+
                 using var outputFile = new StreamWriter(destFileName);
                 var lines = data[fileName];
-                
+
                 foreach (var line in lines)
                 {
                     outputFile.WriteLine(line);
                 }
             }
         }
+
+        #endregion
+
+        #region "Roslyn Helpers"
 
         public static MethodDeclarationSyntax GetMethodDeclarationSyntax(string returnTypeName,
             string methodName, List<string>? body, string modifier = "private")
@@ -169,6 +165,40 @@ namespace WebFormParser.Utility
                     identifier: SyntaxFactory.Identifier(paramterNames[i]),
                     @default: null);
             }
+        }
+
+        #endregion
+
+        #region "ASP/ASPX Helpers"
+
+        public static List<string> GetPageList(string targetFolder, string ext = ".aspx")
+        {
+            List<string> result = new();
+
+            foreach (var fileName in Util.GetFiles(targetFolder))
+            {
+                var extension = Path.GetExtension(fileName);
+                var validExtension = ext;
+                if (validExtension.Equals(extension))
+                {
+                    result.Add(fileName);
+                }
+            }
+
+            return result;
+        }
+
+        public static bool PageContains(List<string> page, string search)
+        {
+            foreach (var line in page)
+            {
+                if (!line.Contains(search))
+                    continue;
+
+                return true;
+            }
+
+            return false;
         }
 
         public static bool CleanBlock(List<string> block, List<char> symbols, ref List<string> newBlock)
@@ -243,6 +273,10 @@ namespace WebFormParser.Utility
             return ret;
         }
 
+        #endregion
+
+        #region "String Helpers"
+
         public static string[] RemoveAt(string[] source, int index)
         {
             string[] dest = new string[source.Length - 1];
@@ -265,6 +299,71 @@ namespace WebFormParser.Utility
             }
             return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
         }
+
+        #endregion
+
+        #region "Embedded Resources"
+
+        private const string RESOURCES = "Resources";
+
+        public static string GetEmbeddedString(string fileName, string resFolder = "", string assembly = "")
+        {
+            var fileData = GetEmbeddedFile(resFolder, fileName, assembly);
+            var ret = System.Text.Encoding.UTF8.GetString(fileData);
+            return ret;
+        }
+
+        private static string GetAssemblyName(ref Assembly a)
+        {
+            var info = a.GetManifestResourceNames();
+
+            if (info.Length > 0)
+                return info[0].Split(".")[0];
+
+            return string.Empty;
+        }
+
+        private static string GetResourceName(string[] files, string path, string fileName)
+        {
+            var ret = "";
+
+            foreach (var f in files)
+            {
+                var temp = f.Replace(path, "");
+                if (!string.Equals(temp, fileName, StringComparison.CurrentCultureIgnoreCase)) continue;
+                ret = f;
+                break;
+            }
+
+            return ret;
+        }
+
+        public static byte[] GetEmbeddedFile(string resFolder, string fileName, string assembly = "")
+        {
+
+            var assy = string.IsNullOrEmpty(assembly) ? Assembly.GetExecutingAssembly() : Assembly.Load(assembly);
+            var assyName = string.IsNullOrEmpty(assembly) ? GetAssemblyName(ref assy) : assembly;
+            var resPath = string.Concat(assyName, ".", RESOURCES, "."); 
+            resPath = string.IsNullOrEmpty(resFolder) ? resPath : string.Concat(resPath, resFolder, ".");
+            var files = assy.GetManifestResourceNames();
+            var resName = GetResourceName(assy.GetManifestResourceNames(), resPath, fileName);
+            var fileData = Array.Empty<byte>();
+            var resFilestream = assy.GetManifestResourceStream(resName);
+
+            if (resFilestream != null)
+            {
+                using var br = new BinaryReader(resFilestream);
+                fileData = new byte[resFilestream.Length];
+                _ = resFilestream.Read(fileData, 0, fileData.Length);
+                br.Close();
+            }
+
+            return fileData;
+        }
+
+        #endregion
+
+        #region "CSP Helpers"
 
         public static bool RemoveFromSource(IElement? tag, string regex, string attribute)
         {
@@ -350,5 +449,9 @@ namespace WebFormParser.Utility
             Source.changed = true;
             return true;
         }
+
+        #endregion
+
+
     }
 }
