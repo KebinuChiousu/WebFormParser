@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WebFormParser": {
+      "commandName": "Project",
+      "commandLineArgs": "--demo " 
+    }
+  }
+}
