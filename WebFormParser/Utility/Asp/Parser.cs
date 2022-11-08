@@ -11,7 +11,7 @@ namespace WebFormParser.Utility.Asp
 {
     public static class Parser
     {
-        private const string Pattern = @"(?'open'<[a-z]+\s[0-9a-z=""' ]+|<[a-z]+>|<[a-z]+\s)|((?'code'<%\n([^%>]|\n)+%>|<%([^%>]|\n)+%>)|(?'attr'[a-z]+|[0-9a-z=""']+))|(?'close'>|>([^<]|\n)+</[a-z]+>|/>|[0-9a-z=""'\n/ ]+>|</[a-z]+>)|(?'comment'<!--.+-->|<!--[\s\S.]+-->)";
+        private const string Pattern = @"(?'open'<[a-zA-Z]+\s[0-9A-Za-z=""' ]+|<[A-Za-z]+>|<[A-Za-z]+\s)|((?'code'<%\n([^%>]|\n)+%>|<%([^%>]|\n)+%>)|(?'attr'[a-zA-Z0-9]+|[0-9A-Za-z=""']+))|(?'close'>|>([^<]|\n)+</[A-Za-z]+>|/>|[0-9A-Za-z=""'\n/ ]+>|</[A-Za-z]+>)|(?'comment'<!--.+-->|<!--[\s\S.]+-->)";
         private const RegexOptions Options = RegexOptions.Multiline;
 
         public static List<Entry> GetRegexGroupMatches(string input)
