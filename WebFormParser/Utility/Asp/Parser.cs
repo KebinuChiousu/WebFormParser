@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.VisualBasic;
+using WebFormParser.model;
 
 namespace WebFormParser.Utility.Asp
 {
@@ -32,8 +33,70 @@ namespace WebFormParser.Utility.Asp
                 ret.Add(entry);
             }
 
+            ret = CategorizeEntries(ret);
+
             return ret;
         }
+
+        private static List<Entry> CategorizeEntries(List<Entry> entries)
+        {
+            var ret = new List<Entry>();
+            var state = new State();
+
+            foreach (var entry in entries)
+            {
+                switch (entry.GroupName)
+                {
+                    case "open":
+                        state.IsTag = true;
+                        state.IsOpen = !entry.Value.Contains(">");
+                        break;
+                    case "close":
+                        state.IsTag = false;
+                        state.IsOpen = false;
+                        break;
+                    case "code":
+                        state.IsCode = true;
+                        break;
+                }
+
+                var tag = HandleEntry(entry, ref state);
+
+                ret.Add(tag);
+            }
+
+            return ret;
+        }
+
+        private static Entry HandleEntry(Entry entry, ref State state)
+        {
+            switch (entry.GroupName)
+            {
+                case "attr":
+                    if (!state.IsOpen) entry.GroupName = "content";
+                    if (state.IsCode) entry.GroupName = "codeValue";
+                    break;
+                case "code":
+                    if (state.IsOpen) entry.GroupName = "codeAttr";
+                    break;
+                case "open":
+                    if (state.IsCode) entry.GroupName = "codeOpen";
+                    break;
+                case "close":
+                    if (state.IsCode) entry.GroupName = "codeClose";
+                    return entry;
+                default:
+                    return entry;
+            }
+
+            state.OpenCode += entry.Value.Count(f => f == '{');
+            state.CloseCode += entry.Value.Count(f => f == '}');
+            state.HandleCodeState(entry.Value);
+
+            return entry;
+        }
+
+
 
         private static List<string> GetRegexGroupNames(Regex regex)
         {
