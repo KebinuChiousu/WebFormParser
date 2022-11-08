@@ -11,22 +11,24 @@ namespace WebFormParser.Utility.Asp
     public static class Parser
     {
         private const string Pattern = @"(?'open'<[a-z]+\s[0-9a-z=""' ]+|<[a-z]+>|<[a-z]+\s)|((?'code'<%\n([^%>]|\n)+%>|<%([^%>]|\n)+%>)|(?'attr'[a-z]+|[0-9a-z=""']+))|(?'close'>|>([^<]|\n)+</[a-z]+>|/>|[0-9a-z=""'\n/ ]+>|</[a-z]+>)|(?'comment'<!--.+-->|<!--[\s\S.]+-->)";
+        private const RegexOptions Options = RegexOptions.Multiline;
 
         public static List<Entry> GetRegexGroupMatches(string input)
         {
             var ret = new List<Entry>();
 
-            RegexOptions options = RegexOptions.Multiline;
-            var regex = new Regex(Pattern, options);
+            var regex = new Regex(Pattern, Options);
             var groupList = GetRegexGroupNames(regex);
-            MatchCollection mc = regex.Matches(input); 
+            var mc = regex.Matches(input); 
             foreach (Match m in mc)
             {
                 var groupName = GetGroupNameForMatch(groupList, m);
                 var matchValue = FormatValue(m.Value, groupName);
-                var entry = new Entry();
-                entry.GroupName = groupName;
-                entry.Value = matchValue;
+                var entry = new Entry
+                {
+                    GroupName = groupName,
+                    Value = matchValue
+                };
                 ret.Add(entry);
             }
 
@@ -71,16 +73,5 @@ namespace WebFormParser.Utility.Asp
             return string.Join(" ", lineList);
         }
 
-        public class Entry
-        {
-            public string GroupName { get; set; }
-            public string Value { get; set; }
-
-            public Entry()
-            {
-                GroupName = "";
-                Value = "";
-            }
-        }
     }
 }
