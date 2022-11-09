@@ -78,6 +78,7 @@ namespace WebFormParser.Utility.Asp
                     break;
                 case "code":
                     if (state.IsOpen) entry.GroupName = "codeAttr";
+                    if (entry.Value.Contains("<%@")) entry.GroupName = "page";
                     break;
                 case "open":
                     if (state.IsCode) entry.GroupName = "codeOpen";
