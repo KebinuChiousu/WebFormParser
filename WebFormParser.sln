@@ -3,16 +3,24 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFormParser", "WebFormParser\WebFormParser.csproj", "{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebFormParser", "WebFormParser\WebFormParser.csproj", "{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C4CFEB86-2809-4101-B557-1F0BF820F93A}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		LICENSE.txt = LICENSE.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{55955094-0434-4F82-AEA6-890E2F2F21FB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{458CADC4-B046-4E99-8C21-DC73838DAC69}"
+	ProjectSection(SolutionItems) = preProject
+		Libraries\SgmlReader\SgmlReader.csproj = Libraries\SgmlReader\SgmlReader.csproj
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XmlFilter", "Libraries\XmlFilter\XmlFilter.csproj", "{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,12 +32,17 @@ Global
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA} = {55955094-0434-4F82-AEA6-890E2F2F21FB}
+		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E} = {458CADC4-B046-4E99-8C21-DC73838DAC69}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2B9811EA-15D9-4584-84DA-88E706E99BCB}
