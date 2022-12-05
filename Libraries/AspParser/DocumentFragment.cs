@@ -8,14 +8,14 @@ namespace ASP
 	/// </summary>
 	public class DocumentFragment
 	{
-		private Document _Root;
+		private Document? _Root;
 		/// <summary>
 		/// Gets the <see cref="Document"/> to which this fragment belongs.
 		/// </summary>
 		/// <value>
 		/// The <see cref="Document"/> to which this fragment belongs.
 		/// </value>
-		public Document Root
+		public Document? Root
 		{
 			get { return this._Root; }
 		}
@@ -84,21 +84,28 @@ namespace ASP
 			if( index < 0 )
 				throw new ArgumentOutOfRangeException("index", "Index must be greater or equal to zero");
 
-			if( index > this._Root.Value.Length - 1 )
-				throw new ArgumentOutOfRangeException("index", "Index cannot exceed document length");
+			if (this._Root != null)
+                if( index > this._Root.Value.Length - 1 )
+				    throw new ArgumentOutOfRangeException("index", "Index cannot exceed document length");
 
 			if( length < 0 )
 				throw new ArgumentOutOfRangeException("length", "Length must be greater or equal to zero");
 
-			if( index + length > this._Root.Value.Length )
-				throw new ArgumentOutOfRangeException("index", "Index plus length cannot exceed document length");
+            if (this._Root != null)
+			    if( index + length > this._Root.Value.Length )
+				    throw new ArgumentOutOfRangeException("index", "Index plus length cannot exceed document length");
 
 			this._Index = index;
 			this._Length = length;
 
 			this._LineNo = 1;
-			string aspx = this._Root.Value.Substring(0, index);
-			int lastLineEnd = -1;
+
+            var aspx = string.Empty;
+
+			if (this._Root != null)
+                    aspx = this._Root.Value.Substring(0, index);
+			
+            int lastLineEnd = -1;
 			for(int i = 0; i < index; i++)
 			{
 				if( aspx[i] == '\n' )
@@ -125,6 +132,9 @@ namespace ASP
 				if( ! this.Defined )
 					throw new InvalidOperationException("Index and length not defined.");
 
+                if (this._Root == null)
+                    return string.Empty;
+
 				return this._Root.Value.Substring(this._Index, this._Length); 
 			}
 		}
@@ -145,9 +155,11 @@ namespace ASP
 		/// with the specified <see cref="Document"/> that the fragment belongs to.
 		/// </summary>
 		/// <param name="root"><see cref="Document"/> to which the newly created fragment belongs to.</param>
-		internal DocumentFragment(Document root)
+		internal DocumentFragment(Document? root)
 		{
-			this._Root = root;
+			if (root != null)
+                this._Root = root;
+
 			this._Index    = -1;
 			this._Length   = -1;
 			this._LineNo   = -1;

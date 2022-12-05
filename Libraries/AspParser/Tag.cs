@@ -9,26 +9,26 @@ namespace ASP
 	/// </summary>
 	public class Tag
 	{
-		private Document _Root;
+		private Document? _Root;
 		/// <summary>
 		/// Gets the <see cref="Document"/> to which this tag belongs.
 		/// </summary>
 		/// <value>
 		/// The <see cref="Document"/> to which this tag belongs.
 		/// </value>
-		public virtual Document Root
+		public virtual Document? Root
 		{
 			get { return this._Root; }
 		}
 
-		private Tag _Parent;
+		private Tag? _Parent;
 		/// <summary>
 		/// Gets the parent of this tag.
 		/// </summary>
 		/// <value>
 		/// The <b>Tag</b> that is the parent of the current tag.
 		/// </value>
-		public virtual Tag Parent
+		public virtual Tag? Parent
 		{
 			get { return this._Parent; }
 		}
@@ -216,8 +216,10 @@ namespace ASP
 		private static Hashtable emptyTags;
 		static Tag()
 		{
-			emptyTags = new Hashtable(CaseInsensitiveHashCodeProvider.DefaultInvariant, CaseInsensitiveComparer.DefaultInvariant);
-			emptyTags.Add("!DOCTYPE", null);
+#pragma warning disable CS0618
+            emptyTags = new Hashtable(CaseInsensitiveHashCodeProvider.DefaultInvariant, CaseInsensitiveComparer.DefaultInvariant);
+#pragma warning restore CS0618
+            emptyTags.Add("!DOCTYPE", null);
 			emptyTags.Add("WBR", null);
 			emptyTags.Add("RT", null);
 			emptyTags.Add("PLAINTEXT", null);
@@ -268,13 +270,13 @@ namespace ASP
 		/// </summary>
 		/// <param name="parent">Parent of the created tag.</param>
 		/// <param name="type">Type of the created tag.</param>
-		internal Tag(Tag parent, TagType type)
+		internal Tag(Tag? parent, TagType type)
 		{
 			this._Parent = parent;
 			if( parent != null )
 			{
 				this._Root = parent.Root;
-				this._Parent.ChildTags.Append(this);
+				this._Parent?.ChildTags.Append(this);
 			}
 
 			this._TagType = type;

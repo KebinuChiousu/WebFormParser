@@ -30,7 +30,7 @@ namespace ASP
 		/// This property always returns a null reference
 		/// as the <b>Document</b> is always a root.
 		/// </value>
-		public override Tag Parent
+		public override Tag? Parent
 		{
 			get { return null; }
 		}
@@ -317,9 +317,12 @@ namespace ASP
 			return (CaseInsensitiveComparer.DefaultInvariant.Compare("SCRIPT", name) == 0);
 		}
 
-		private Tag ProcessCloseTag(Tag current, Match closeTagMatch)
-		{
-			Group tagName = closeTagMatch.Groups["tagname"];
+		private Tag ProcessCloseTag(Tag? current, Match closeTagMatch)
+        {
+            if (current == null)
+                return new Tag(null, TagType.Comment);
+            
+            Group tagName = closeTagMatch.Groups["tagname"];
 
 			// Change inScriptTag flag to false if the tag is </script>
 			if( this.IsScriptTagName(tagName.Value) )
@@ -334,7 +337,7 @@ namespace ASP
 			}
 
 			// Find open tag for the closing tag.
-			Tag openTag = null;
+			Tag? openTag = null;
 			for(openTag = current; openTag != null; openTag = openTag.Parent)
 			{
 				// Ignore all tags except Open tags
@@ -362,8 +365,8 @@ namespace ASP
 			closeTag.NameFragment.Set(tagName.Index, tagName.Length);
 			closeTag.SetError((openTag == null) ? TagError.UnopenedCloseTag : TagError.None);
 
-			return current;
-		}
+            return current ?? new Tag(null, TagType.Comment);
+        }
 
 		private void ProcessTextTag(Tag current, Match textMatch)
 		{
