@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.VisualBasic;
 using WebFormParser.model;
+using WebFormParser.Utility.Asp.Enum;
 
 namespace WebFormParser.Utility.Asp
 {
@@ -70,25 +71,33 @@ namespace WebFormParser.Utility.Asp
 
         private static Entry HandleEntry(Entry entry, ref State state)
         {
+            entry.FileType = state.IsCode ? AspFileEnum.CodeBehind : AspFileEnum.Html;
+
+            SetTagType(ref entry);
+
             switch (entry.GroupName)
             {
                 case "attr":
-                    if (!state.IsOpen) entry.GroupName = "content";
-                    if (state.IsCode) entry.GroupName = "codeValue";
+                    if (!state.IsOpen) entry.TagType = TagTypeEnum.Content;
+                    if (state.IsCode)
+                        entry.TagType = state.IsOpen ? TagTypeEnum.CodeValue : TagTypeEnum.CodeContent;
                     break;
                 case "code":
-                    if (state.IsOpen) entry.GroupName = "codeAttr";
-                    if (entry.Value.Contains("<%@")) entry.GroupName = "page";
+                    if (state.IsOpen) entry.TagType = TagTypeEnum.CodeAttr;
+                    if (entry.Value.Contains("<%@")) entry.TagType = TagTypeEnum.Page;
                     break;
                 case "open":
-                    if (state.IsCode) entry.GroupName = "codeOpen";
+                    if (state.IsCode) entry.TagType = TagTypeEnum.CodeOpen;
                     break;
                 case "close":
-                    if (state.IsCode) entry.GroupName = "codeClose";
-                    return entry;
-                default:
-                    return entry;
+                    if (state.IsCode) entry.TagType = TagTypeEnum.CodeClose;
+                    break;
             }
+
+            SetGroupName(ref entry);
+
+            if (!state.IsCode)
+                return entry;
 
             state.OpenCode += entry.Value.Count(f => f == '{');
             state.CloseCode += entry.Value.Count(f => f == '}');
@@ -97,7 +106,22 @@ namespace WebFormParser.Utility.Asp
             return entry;
         }
 
+        private static void SetGroupName(ref Entry entry)
+        {
+            entry.GroupName = entry.GetTagType(entry.TagType);
+        }
 
+        private static void SetTagType(ref Entry entry)
+        {
+            entry.TagType = entry.GroupName switch
+            {
+                "attr" => TagTypeEnum.Attr,
+                "open" => TagTypeEnum.Open,
+                "close" => TagTypeEnum.Close,
+                "comment" => TagTypeEnum.Comment,
+                _ => TagTypeEnum.Content
+            };
+        }
 
         private static List<string> GetRegexGroupNames(Regex regex)
         {
