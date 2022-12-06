@@ -15,17 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{55955094-0434-4F82-AEA6-890E2F2F21FB}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{458CADC4-B046-4E99-8C21-DC73838DAC69}"
-	ProjectSection(SolutionItems) = preProject
-		Libraries\SgmlReader\SgmlReader.csproj = Libraries\SgmlReader\SgmlReader.csproj
-	EndProjectSection
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XmlFilter", "Libraries\XmlFilter\XmlFilter.csproj", "{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspParser", "Libraries\AspParser\AspParser.csproj", "{CC9C840F-3518-4704-8845-759DE99F7A46}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebForms.RegEx", "Libraries\WebForms.RegEx\lib\net6.0\WebForms.RegEx.csproj", "{964C96FA-FFB5-437B-8991-E6D96E2AC4F1}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,27 +25,12 @@ Global
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CC9C840F-3518-4704-8845-759DE99F7A46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC9C840F-3518-4704-8845-759DE99F7A46}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CC9C840F-3518-4704-8845-759DE99F7A46}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CC9C840F-3518-4704-8845-759DE99F7A46}.Release|Any CPU.Build.0 = Release|Any CPU
-		{964C96FA-FFB5-437B-8991-E6D96E2AC4F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{964C96FA-FFB5-437B-8991-E6D96E2AC4F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{964C96FA-FFB5-437B-8991-E6D96E2AC4F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{964C96FA-FFB5-437B-8991-E6D96E2AC4F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B94BE643-8B54-4B9E-A6B0-7F68E15C1CBA} = {55955094-0434-4F82-AEA6-890E2F2F21FB}
-		{DA2609E0-85D3-40FF-ABCF-7405D8D0450E} = {458CADC4-B046-4E99-8C21-DC73838DAC69}
-		{CC9C840F-3518-4704-8845-759DE99F7A46} = {458CADC4-B046-4E99-8C21-DC73838DAC69}
-		{964C96FA-FFB5-437B-8991-E6D96E2AC4F1} = {458CADC4-B046-4E99-8C21-DC73838DAC69}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2B9811EA-15D9-4584-84DA-88E706E99BCB}
