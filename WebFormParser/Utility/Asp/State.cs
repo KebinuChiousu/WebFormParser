@@ -12,7 +12,7 @@ namespace WebFormParser.Utility.Asp
         public bool IsTag { get; set; }
         public bool IsOpen { get; set; }
         public bool IsCode { get; set; }
-
+        public bool PrevCode { get; set; }
         public int OpenCode { get; set; }
         public int CloseCode { get; set; }
         public int FuncCount { get; set; }

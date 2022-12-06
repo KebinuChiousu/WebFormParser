@@ -9,6 +9,7 @@ public class Entry
     public AspFileEnum FileType { get; set; }
     public TagTypeEnum TagType { get; set; }
     public string? CodeFunction { get; set; }
+    public bool IsOpen { get; set; }
 
     public Entry()
     {
@@ -31,6 +32,7 @@ public class Entry
             TagTypeEnum.Open => "tagOpen",
             TagTypeEnum.Close => "tagClose",
             TagTypeEnum.Attr => "tagAttr",
+            TagTypeEnum.Value => "tagValue",
             TagTypeEnum.Page => "page",
             TagTypeEnum.CodeOpen => "codeOpen",
             TagTypeEnum.CodeClose => "codeClose",
@@ -39,5 +41,10 @@ public class Entry
             TagTypeEnum.CodeContent => "codeContent",
             _ => "content"
         };
+    }
+
+    public override string ToString()
+    {
+        return GroupName;
     }
 }

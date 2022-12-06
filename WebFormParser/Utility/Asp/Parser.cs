@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.VisualBasic;
 using WebFormParser.model;
 using WebFormParser.Utility.Asp.Enum;
 
@@ -18,7 +17,7 @@ namespace WebFormParser.Utility.Asp
         public static List<Entry> GetRegexGroupMatches(string input)
         {
             var ret = new List<Entry>();
-
+            var nodes = new List<Entry>();
             var regex = new Regex(Pattern, Options);
             var groupList = GetRegexGroupNames(regex);
             var mc = regex.Matches(input); 
@@ -31,12 +30,38 @@ namespace WebFormParser.Utility.Asp
                     GroupName = groupName,
                     Value = matchValue
                 };
-                ret.Add(entry);
+                nodes.Add(entry);
             }
 
-            ret = CategorizeEntries(ret);
+            nodes = CategorizeEntries(nodes);
 
+            ret = MergeNodes(nodes);
+            
             return ret;
+        }
+
+        private static List<Entry> MergeNodes(List<Entry> nodes)
+        {
+            for(var i = 0; i < nodes.Count; i++)
+            {
+                var node = nodes[i];
+                var prevNode = i > 0 ? nodes[i - 1] : null;
+
+                if (prevNode == null )
+                    continue;
+
+                if (node.TagType != TagTypeEnum.Attr)
+                    continue;
+
+                if (prevNode.TagType != TagTypeEnum.Attr)
+                    continue;
+                
+                prevNode.Value += node.Value;
+                nodes.RemoveAt(i);
+                i--;
+            }
+
+            return nodes;
         }
 
         private static List<Entry> CategorizeEntries(List<Entry> entries)
@@ -46,6 +71,9 @@ namespace WebFormParser.Utility.Asp
 
             foreach (var entry in entries)
             {
+
+                state.PrevCode = state.IsCode;
+                
                 switch (entry.GroupName)
                 {
                     case "open":
@@ -73,7 +101,7 @@ namespace WebFormParser.Utility.Asp
         {
             entry.FileType = state.IsCode ? AspFileEnum.CodeBehind : AspFileEnum.Html;
 
-            SetTagType(ref entry);
+            SetTagType(ref entry, state);
 
             switch (entry.GroupName)
             {
@@ -81,34 +109,51 @@ namespace WebFormParser.Utility.Asp
                     if (!state.IsOpen) entry.TagType = TagTypeEnum.Content;
                     if (state.IsCode)
                     {
-                        entry.TagType = state.IsOpen ? TagTypeEnum.CodeValue : TagTypeEnum.CodeContent;
-                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                        entry.TagType = state.IsOpen ? TagTypeEnum.CodeAttr : TagTypeEnum.CodeContent;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
                     }
                     break;
                 case "code":
-                    if (state.IsOpen) entry.TagType = TagTypeEnum.CodeAttr;
+                    if (state.IsOpen)
+                    {
+                        entry.TagType = TagTypeEnum.CodeAttr;
+                        if (!state.PrevCode)
+                            state.FuncCount++;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
+                    }
                     if (entry.Value.Contains("<%@"))
                     {
                         entry.TagType = TagTypeEnum.Page;
                         entry.FileType = AspFileEnum.Html;
+                        state.IsCode = false;
                     }
+
                     if (entry.FileType == AspFileEnum.CodeBehind)
-                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                    {
+                        if (entry.TagType == TagTypeEnum.Content)
+                        {
+                            entry.TagType = TagTypeEnum.CodeContent;
+                            if (!state.PrevCode)
+                                state.FuncCount++;
+                        }
+
+                        entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
+                    }
                     break;
                 case "open":
                     if (state.IsCode)
                     {
                         entry.TagType = TagTypeEnum.CodeOpen;
-                        state.FuncCount++;
-                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                        if (!state.PrevCode)
+                            state.FuncCount++;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
                     }
-                    
                     break;
                 case "close":
                     if (state.IsCode)
                     {
                         entry.TagType = TagTypeEnum.CodeClose;
-                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
                     }
                     break;
             }
@@ -130,7 +175,7 @@ namespace WebFormParser.Utility.Asp
             entry.GroupName = entry.GetTagType(entry.TagType);
         }
 
-        private static void SetTagType(ref Entry entry)
+        private static void SetTagType(ref Entry entry, State state)
         {
             entry.TagType = entry.GroupName switch
             {
@@ -140,6 +185,8 @@ namespace WebFormParser.Utility.Asp
                 "comment" => TagTypeEnum.Comment,
                 _ => TagTypeEnum.Content
             };
+
+            entry.IsOpen = state.IsOpen;
         }
 
         private static List<string> GetRegexGroupNames(Regex regex)
@@ -176,7 +223,7 @@ namespace WebFormParser.Utility.Asp
             var lineList = new List<string>();
             var lines = value.Split(Environment.NewLine);
             foreach(var line in lines)
-                lineList.Add(Strings.Trim(line));
+                lineList.Add(line.Trim());
             return string.Join(" ", lineList);
         }
 
