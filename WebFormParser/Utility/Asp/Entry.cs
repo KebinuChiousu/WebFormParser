@@ -8,6 +8,7 @@ public class Entry
     public string Value { get; set; }
     public AspFileEnum FileType { get; set; }
     public TagTypeEnum TagType { get; set; }
+    public string? CodeFunction { get; set; }
 
     public Entry()
     {

@@ -15,6 +15,7 @@ namespace WebFormParser.Utility.Asp
 
         public int OpenCode { get; set; }
         public int CloseCode { get; set; }
+        public int FuncCount { get; set; }
 
         public State()
         {
@@ -24,6 +25,7 @@ namespace WebFormParser.Utility.Asp
 
             OpenCode = 0;
             CloseCode = 0;
+            FuncCount = 0;
         }
 
         private void Reset()

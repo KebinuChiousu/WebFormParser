@@ -80,17 +80,36 @@ namespace WebFormParser.Utility.Asp
                 case "attr":
                     if (!state.IsOpen) entry.TagType = TagTypeEnum.Content;
                     if (state.IsCode)
+                    {
                         entry.TagType = state.IsOpen ? TagTypeEnum.CodeValue : TagTypeEnum.CodeContent;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                    }
                     break;
                 case "code":
                     if (state.IsOpen) entry.TagType = TagTypeEnum.CodeAttr;
-                    if (entry.Value.Contains("<%@")) entry.TagType = TagTypeEnum.Page;
+                    if (entry.Value.Contains("<%@"))
+                    {
+                        entry.TagType = TagTypeEnum.Page;
+                        entry.FileType = AspFileEnum.Html;
+                    }
+                    if (entry.FileType == AspFileEnum.CodeBehind)
+                        entry.CodeFunction = "page_logic_" + state.FuncCount;
                     break;
                 case "open":
-                    if (state.IsCode) entry.TagType = TagTypeEnum.CodeOpen;
+                    if (state.IsCode)
+                    {
+                        entry.TagType = TagTypeEnum.CodeOpen;
+                        state.FuncCount++;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                    }
+                    
                     break;
                 case "close":
-                    if (state.IsCode) entry.TagType = TagTypeEnum.CodeClose;
+                    if (state.IsCode)
+                    {
+                        entry.TagType = TagTypeEnum.CodeClose;
+                        entry.CodeFunction = "page_logic_" + state.FuncCount;
+                    }
                     break;
             }
 
