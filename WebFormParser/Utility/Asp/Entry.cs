@@ -45,6 +45,8 @@ public class Entry
 
     public override string ToString()
     {
-        return GroupName;
+        string fileType = GetFileType(this.FileType);
+
+        return fileType + " - " + GroupName;
     }
 }
