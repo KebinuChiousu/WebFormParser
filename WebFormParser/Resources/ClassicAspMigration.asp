@@ -19,7 +19,7 @@ HttpContext.Current.Response.Write(Test!);
 </td></tr>
 <tr><td>
 <select>
-<option <% if (readonly) { %>readonly<% } %>>waka <% getValue(); %> test</option>
+<option <% if (true) { %>value=ok<% } %>>waka <% getValue(); %> test</option>
 </select>
 </td></tr>
 </table>
