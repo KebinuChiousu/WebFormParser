@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using AngleSharp.Dom;
 using WebFormParser.model;
-using WebFormParser.Utility;
 
-namespace WebFormParser.csp
+namespace WebFormParser.Utility.Csp
 {
     public static class CleanJs
     {

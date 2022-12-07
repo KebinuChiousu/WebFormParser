@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using AngleSharp.Dom;
 using WebFormParser.model;
-using WebFormParser.Utility;
 
-namespace WebFormParser.csp
+namespace WebFormParser.Utility.Csp
 {
     internal class CleanStyle
     {

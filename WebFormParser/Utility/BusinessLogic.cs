@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 using AngleSharp.Html.Parser;
 using AngleSharp;
 using AngleSharp.Dom;
-using WebFormParser.csp;
 using WebFormParser.model;
+using WebFormParser.Utility.Csp;
 
 namespace WebFormParser.Utility
 {
