@@ -26,13 +26,7 @@ namespace WebFormParser.Utility
             var codeList = Asp.CodeGen.Generate(ref entries);
 
             // PrintAspNodeTree(entries);
-
-            Console.WriteLine("Html: ");
-
-            foreach (var entry in htmlList)
-            {
-                Console.WriteLine(entry);
-            }
+            // PrintHtmlCode(htmlList);
         }
 
         private static void PrintAspNodeTree(List<Entry> entries)
@@ -44,6 +38,16 @@ namespace WebFormParser.Utility
                 Console.WriteLine($"FileType: {entry.GetFileType(entry.FileType)}");
                 Console.WriteLine($"Group: {entry.GroupName}");
                 Console.WriteLine($"Value: {entry.Value}");
+            }
+        }
+
+        private static void PrintHtmlCode(List<string> htmlList)
+        {
+            Console.WriteLine("Html: ");
+
+            foreach (var entry in htmlList)
+            {
+                Console.WriteLine(entry);
             }
         }
     }
