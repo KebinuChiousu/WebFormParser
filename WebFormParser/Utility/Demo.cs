@@ -17,16 +17,17 @@ namespace WebFormParser.Utility
     {
         public static void PrintClassicNodes()
         {
-            
-            string input = Util.GetEmbeddedString("ClassicAspMigration.asp");
-
-            var entries = Asp.Parser.GetRegexGroupMatches(input);
-
-            var htmlList = Asp.CodeGen.Generate(ref entries, AspFileEnum.Html);
-            var codeList = Asp.CodeGen.Generate(ref entries);
+            var input = Util.GetEmbeddedString("ClassicAspMigration.asp");
+            var fileName = "ClassicAspMigration";
+            var entries = Parser.GetRegexGroupMatches(input);
+            var htmlList = Asp.CodeGen.Generate(ref entries, mode: AspFileEnum.Html);
+            var codeList = Asp.CodeGen.Generate(ref entries, fileName);
 
             // PrintAspNodeTree(entries);
-            // PrintHtmlCode(htmlList);
+            
+            PrintCode(AspFileEnum.Html, htmlList);
+            Console.WriteLine("");
+            PrintCode(AspFileEnum.CodeBehind, codeList);
         }
 
         private static void PrintAspNodeTree(List<Entry> entries)
@@ -41,11 +42,12 @@ namespace WebFormParser.Utility
             }
         }
 
-        private static void PrintHtmlCode(List<string> htmlList)
+        private static void PrintCode(AspFileEnum fileType, List<string> entries)
         {
-            Console.WriteLine("Html: ");
+            var title = fileType == AspFileEnum.Html ? "Html: " : "Code: ";
+            Console.WriteLine(title);
 
-            foreach (var entry in htmlList)
+            foreach (var entry in entries)
             {
                 Console.WriteLine(entry);
             }
