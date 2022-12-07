@@ -11,7 +11,7 @@
 <body>
 <form>
 <% 
-HttpContext.Current.Response.Write(Test!);
+HttpContext.Current.Response.Write("Test!");
 %>
 <table>
 <tr><td>
