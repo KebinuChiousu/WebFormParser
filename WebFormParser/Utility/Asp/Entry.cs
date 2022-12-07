@@ -47,6 +47,6 @@ public class Entry
     {
         string fileType = GetFileType(this.FileType);
 
-        return fileType + " - " + GroupName;
+        return fileType + " - " + GetTagType(this.TagType);
     }
 }
