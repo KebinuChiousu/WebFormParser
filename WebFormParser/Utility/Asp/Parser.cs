@@ -50,13 +50,23 @@ namespace WebFormParser.Utility.Asp
                 if (prevNode == null )
                     continue;
 
-                if (node.TagType != TagTypeEnum.Attr)
+                if (node.TagType is not (TagTypeEnum.Attr or TagTypeEnum.CodeValue))
                     continue;
 
-                if (prevNode.TagType != TagTypeEnum.Attr)
+                if (prevNode.TagType is not (TagTypeEnum.Attr or TagTypeEnum.CodeValue or TagTypeEnum.CodeOpen or TagTypeEnum.CodeContent))
                     continue;
-                
-                prevNode.Value += node.Value;
+
+                if (prevNode.TagType is (TagTypeEnum.CodeOpen or TagTypeEnum.CodeContent))
+                { ;
+                    node.TagType = TagTypeEnum.CodeContent;
+                    node.GroupName = node.GetTagType(node.TagType);
+                }
+
+                if (prevNode.TagType == TagTypeEnum.CodeOpen)
+                    continue;
+
+                prevNode.Value += (node.TagType == TagTypeEnum.CodeContent) ? " " + node.Value : node.Value;
+
                 nodes.RemoveAt(i);
                 i--;
             }
@@ -110,6 +120,7 @@ namespace WebFormParser.Utility.Asp
                     if (state.IsCode)
                     {
                         entry.TagType = state.IsOpen ? TagTypeEnum.CodeAttr : TagTypeEnum.CodeContent;
+                        entry.TagType = InCodeBlock(entry); 
                         entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
                     }
                     break;
@@ -168,6 +179,12 @@ namespace WebFormParser.Utility.Asp
             state.HandleCodeState(entry.Value);
 
             return entry;
+        }
+
+        private static TagTypeEnum InCodeBlock(Entry entry)
+        {
+            var isCode = entry.Value.Contains("<%") || entry.Value.Contains("%>");
+            return isCode ? TagTypeEnum.CodeAttr : TagTypeEnum.CodeValue;
         }
 
         private static void SetGroupName(ref Entry entry)
