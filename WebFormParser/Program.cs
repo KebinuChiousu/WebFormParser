@@ -5,7 +5,6 @@ using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using CommandLine;
-using WebFormParser.csp;
 using WebFormParser.model;
 using WebFormParser.Utility;
 using WebFormParser.Utility.Options;
