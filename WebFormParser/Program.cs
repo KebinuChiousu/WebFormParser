@@ -18,9 +18,16 @@ namespace WebFormParser
         static void Main(string[] args)
         {
             var showHelp = false;
-            if (args.Length > 0)
-                if (args[0] == "--help")
+            switch (args.Length)
+            {
+                case > 0:
+                    if (args[0] == "--help")
+                        showHelp = true;
+                    break;
+                case 0:
                     showHelp = true;
+                    break;
+            }
 
             if (args.Length > 1 || showHelp)
             {

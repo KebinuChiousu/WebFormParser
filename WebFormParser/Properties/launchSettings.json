@@ -1,8 +1,12 @@
 {
-  "profiles": {
-    "WebFormParser": {
-      "commandName": "Project",
-      "commandLineArgs": "--demo " 
+    "profiles": {
+        "WebFormParser": {
+            "commandName": "Project",
+            "commandLineArgs": "--demo"
+        },
+        "Help": {
+            "commandName": "Project",
+            "commandLineArgs": "--help"
+        }
     }
-  }
 }
