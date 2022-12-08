@@ -17,11 +17,19 @@ namespace WebFormParser
 
         static void Main(string[] args)
         {
-            if (args.Length > 1)
+            var showHelp = false;
+            if (args.Length > 0)
+                if (args[0] == "--help")
+                    showHelp = true;
+
+            if (args.Length > 1 || showHelp)
             {
                 CommandLine.Parser.Default.ParseArguments<ProgramOptions>(args)
                     .WithParsed(RunOptions);
             }
+
+            if (showHelp)
+                return;
 
             CommandLine.Parser.Default.ParseArguments<DemoOptions>(args)
                 .WithParsed(RunOptions);
