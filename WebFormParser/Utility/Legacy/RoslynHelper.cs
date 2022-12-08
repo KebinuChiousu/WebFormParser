@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace WebFormParser.Utility.Asp
+namespace WebFormParser.Utility.Legacy
 {
     public static class RoslynHelper
     {
@@ -15,7 +15,7 @@ namespace WebFormParser.Utility.Asp
             // Create a namespace: (namespace CodeGenerationSample)
             var @namespace = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("CodeGenerationSample")).NormalizeWhitespace();
 
-             // Add System using statement: (using System)
+            // Add System using statement: (using System)
             @namespace = @namespace.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")));
 
             //  Create a class: (class Order)

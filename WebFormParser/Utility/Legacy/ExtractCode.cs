@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
 
-namespace WebFormParser.Utility
+namespace WebFormParser.Utility.Legacy
 {
     public static class ExtractCode
     {
@@ -40,7 +40,7 @@ namespace WebFormParser.Utility
                 {
                     if (block.Count == 0)
                         continue;
-                    
+
                     if (!ValidateCode(ref block, ref aspx))
                         continue;
 
@@ -57,7 +57,7 @@ namespace WebFormParser.Utility
 
         private static bool ValidateCode(ref List<string> block, ref List<string> aspx)
         {
-           
+
             bool check;
             //var newBlock = new List<string>();
 
@@ -75,7 +75,7 @@ namespace WebFormParser.Utility
             int open = Util.CountChar(block, '{');
             int close = Util.CountChar(block, '}');
 
-            check = (open == close);
+            check = open == close;
 
 
             if (check)
@@ -141,7 +141,7 @@ namespace WebFormParser.Utility
                 ret = true;
             }
 
-            bool check = (ret || openTag);
+            bool check = ret || openTag;
             return check;
         }
 
@@ -239,7 +239,7 @@ namespace WebFormParser.Utility
             return ret;
         }
 
-        
+
 
         #region "Add Using Statement"
 
@@ -252,7 +252,7 @@ namespace WebFormParser.Utility
                 var src = source[page];
                 List<string> usingList = new();
 
-                if (Util.PageContains(src,"HttpContext"))
+                if (Util.PageContains(src, "HttpContext"))
                     if (!Util.PageContains(src, "using System.Web"))
                         usingList.Add("System.Web");
 
@@ -293,7 +293,7 @@ namespace WebFormParser.Utility
 
             if (codeRoot == null)
                 return ret;
-            
+
             code = codeRoot.NormalizeWhitespace().ToFullString();
             ret = code.Split(Environment.NewLine).ToList();
 
