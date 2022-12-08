@@ -37,13 +37,12 @@ namespace WebFormParser.Utility.Asp
             ns = AddUsing(ns, "System.Web");
 
             ClassDeclarationSyntax? classDeclaration = null;
-            ClassDeclarationSyntax newClass;
 
             if (ns.Members.Count > 0)
                 classDeclaration = (ClassDeclarationSyntax) ns.Members[0];
             
             classDeclaration ??= GetClass(fileName);
-            newClass = classDeclaration;
+            var newClass = classDeclaration;
 
             codeDom = codeDom.Where(e => e.FileType == AspFileEnum.CodeBehind).ToList();
 
