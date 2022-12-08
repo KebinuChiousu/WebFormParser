@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ using WebFormParser.Utility.Asp.Enum;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace WebFormParser.Utility.Asp
 {
@@ -26,15 +28,22 @@ namespace WebFormParser.Utility.Asp
 
         #region "CodeBehind"
 
-        private static List<string> GenCodeFile(List<Entry> codeDom, string className)
+        private static List<string> GenCodeFile(List<Entry> codeDom, string fileName)
         {
             var ret = new List<string>();
 
-            var ns = GetNamespace("WebForms");
+            var ns = GetNamespace(fileName);
             ns = AddUsing(ns, "System");
             ns = AddUsing(ns, "System.Web");
 
-            var classDeclaration = GetClass(className);
+            ClassDeclarationSyntax? classDeclaration = null;
+            ClassDeclarationSyntax newClass;
+
+            if (ns.Members.Count > 0)
+                classDeclaration = (ClassDeclarationSyntax) ns.Members[0];
+            
+            classDeclaration ??= GetClass(fileName);
+            newClass = classDeclaration;
 
             codeDom = codeDom.Where(e => e.FileType == AspFileEnum.CodeBehind).ToList();
 
@@ -47,7 +56,7 @@ namespace WebFormParser.Utility.Asp
                 if (codeFunc != entry.CodeFunction)
                 {
                     if (!string.IsNullOrEmpty(codeFunc))
-                        classDeclaration = AddFunction(classDeclaration, codeFunc, stmtList);
+                        newClass = AddFunction(newClass, codeFunc, stmtList);
 
                     stmtList.Clear();
                     codeFunc = entry.CodeFunction;
@@ -57,10 +66,17 @@ namespace WebFormParser.Utility.Asp
             }
 
             if (stmtList.Count > 0)
-                classDeclaration = AddFunction(classDeclaration, codeFunc, stmtList);
+                newClass = AddFunction(newClass, codeFunc, stmtList);
 
-            // Add the class to the namespace.
-            ns = ns.AddMembers(classDeclaration);
+            if (ns.Members.Count > 0)
+            {
+                ns.Members.Replace(classDeclaration, newClass);
+            }
+            else
+            {
+                // Add the class to the namespace.
+                ns = ns.AddMembers(newClass);
+            }
 
             // Normalize and get code as string.
             var code = ns
@@ -74,8 +90,40 @@ namespace WebFormParser.Utility.Asp
 
         #region "Namespace Generation"
 
-        private static NamespaceDeclarationSyntax GetNamespace(string ns)
+        private static NamespaceDeclarationSyntax? GetNamespaceFromFile(string fileName)
         {
+            var fi = new FileInfo(fileName + ".cs");
+            var srcFileName = fi.Name;
+            var srcDirectory = fi.Directory;
+
+            if (srcDirectory == null)
+                return null;
+
+            var sourceFile = Path.Combine(srcDirectory.ToString(), srcFileName);
+
+            if (!File.Exists(sourceFile))
+                return null;
+
+            var code = File.ReadAllText(sourceFile);
+            var tree = CSharpSyntaxTree.ParseText(code);
+            var codeRoot = tree.GetCompilationUnitRoot();
+
+            if (codeRoot.Members[0].Kind() == SyntaxKind.NamespaceDeclaration)
+                return (NamespaceDeclarationSyntax)codeRoot.Members[0];
+
+            return null;
+        }
+
+        private static NamespaceDeclarationSyntax GetNamespace(string fileName, string ns = "WebForms")
+        {
+            NamespaceDeclarationSyntax? nsDecl = null;
+
+            if (!string.IsNullOrEmpty(fileName))
+                nsDecl = GetNamespaceFromFile(fileName);
+
+            if (nsDecl != null)
+                return nsDecl;
+
             // Create a namespace: (namespace CodeGenerationSample)
             return SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(ns)).NormalizeWhitespace();
         }
@@ -89,8 +137,37 @@ namespace WebFormParser.Utility.Asp
 
         #region "Class Generation"
 
+        private static ClassDeclarationSyntax? GetClassByFilename(string fileName)
+        {
+            var fi = new FileInfo(fileName + ".cs");
+            var srcFileName = fi.Name;
+            var srcDirectory = fi.Directory;
+
+            if (srcDirectory == null)
+                return null;
+
+            var sourceFile = Path.Combine(srcDirectory.ToString(), srcFileName);
+
+            if (!File.Exists(sourceFile))
+                return null;
+
+            var code = File.ReadAllText(sourceFile);
+            var tree = CSharpSyntaxTree.ParseText(code);
+            var codeRoot = tree.GetCompilationUnitRoot();
+
+            if (codeRoot.Members[0].Kind() == SyntaxKind.ClassDeclaration)
+                return (ClassDeclarationSyntax)codeRoot.Members[0];
+
+            return null;
+        }
+
         private static ClassDeclarationSyntax GetClass(string className)
         {
+            var codeClass = GetClassByFilename(className);
+
+            if (codeClass != null)
+                return codeClass;
+
             return GetClass(className, ModifierEnum.Public, null);
         }
 
