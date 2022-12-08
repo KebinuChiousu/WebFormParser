@@ -23,7 +23,7 @@ public class Entry
         return fileType == AspFileEnum.CodeBehind ? "Code" : "Html";
     }
 
-    public string GetTagType(TagTypeEnum tagType)
+    public static string GetTagType(TagTypeEnum tagType)
     {
         return tagType switch
         {
@@ -34,6 +34,7 @@ public class Entry
             TagTypeEnum.Attr => "tagAttr",
             TagTypeEnum.Value => "tagValue",
             TagTypeEnum.Page => "page",
+            TagTypeEnum.CodeComment => "codeComment",
             TagTypeEnum.CodeOpen => "codeOpen",
             TagTypeEnum.CodeClose => "codeClose",
             TagTypeEnum.CodeAttr => "codeAttr",

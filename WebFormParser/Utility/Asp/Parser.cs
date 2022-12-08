@@ -59,7 +59,7 @@ namespace WebFormParser.Utility.Asp
                 if (prevNode.TagType is (TagTypeEnum.CodeOpen or TagTypeEnum.CodeContent))
                 { ;
                     node.TagType = TagTypeEnum.CodeContent;
-                    node.GroupName = node.GetTagType(node.TagType);
+                    node.GroupName = Entry.GetTagType(node.TagType);
                 }
 
                 if (prevNode.TagType == TagTypeEnum.CodeOpen)
@@ -189,7 +189,7 @@ namespace WebFormParser.Utility.Asp
 
         private static void SetGroupName(ref Entry entry)
         {
-            entry.GroupName = entry.GetTagType(entry.TagType);
+            entry.GroupName = Entry.GetTagType(entry.TagType);
         }
 
         private static void SetTagType(ref Entry entry, State state)

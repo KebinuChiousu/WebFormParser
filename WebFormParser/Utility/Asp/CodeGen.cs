@@ -47,7 +47,7 @@ namespace WebFormParser.Utility.Asp
             codeDom = codeDom.Where(e => e.FileType == AspFileEnum.CodeBehind).ToList();
 
             var codeFunc = string.Empty;
-            var stmtList = new List<string>();
+            var stmtList = new List<Entry>();
             var stmt = string.Empty;
 
             foreach (var entry in codeDom)
@@ -249,31 +249,44 @@ namespace WebFormParser.Utility.Asp
 
         #region "Method"
 
-        private static ClassDeclarationSyntax AddFunction(ClassDeclarationSyntax classDeclaration, string? funcName, List<string> codeList)
+        private static ClassDeclarationSyntax AddFunction(ClassDeclarationSyntax classDeclaration, string? funcName, List<Entry> codeList)
         {
             if (funcName == null)
                 return classDeclaration;
 
             var stmtList = new List<StatementSyntax>();
+            var docList = new List<SyntaxTrivia>();
 
             foreach (var entry in codeList)
             {
-                var stmt = GetStatement(entry);
-                stmtList.Add(stmt);
+                var code = entry.Value;
+                switch (entry.TagType)
+                {
+                    case TagTypeEnum.CodeComment:
+                        docList.Add(GetComment(code));
+                        break;
+                    default:
+                        stmtList.Add(GetStatement(code));
+                        break;
+                }
             }
 
-            var method = AddMethod("void", funcName, stmtList);
+            var method = AddMethod("void", funcName, stmtList, docList);
 
             return classDeclaration.AddMembers(method);
         }
 
         private static MethodDeclarationSyntax AddMethod(string methodType, string methodName, 
-            List<StatementSyntax> methodBody, ModifierEnum modifier = ModifierEnum.Public)
+            List<StatementSyntax> methodBody, List<SyntaxTrivia> comments,
+            ModifierEnum modifier = ModifierEnum.Public)
         {
             // Create a method
             var methodDeclaration = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(methodType), methodName)
                 .AddModifiers(GetModifier(modifier))
                 .WithBody(SyntaxFactory.Block(methodBody));
+
+            if (comments.Count > 0)
+                methodDeclaration = methodDeclaration.WithLeadingTrivia(comments);
 
             return methodDeclaration;
         }
@@ -302,23 +315,42 @@ namespace WebFormParser.Utility.Asp
             return modifierToken;
         }
 
-        private static StatementSyntax GetStatement(string statement)
+        private static StatementSyntax GetStatement(string value)
         {
             // Create a statement with the body of a method.
-            return SyntaxFactory.ParseStatement(statement);
+            return SyntaxFactory.ParseStatement(value);
         }
 
-        private static string ExtractCode(Entry entry)
+        private static SyntaxTrivia GetComment(string value)
+        {
+            return SyntaxFactory.Comment(value);
+        }
+
+        private static Entry ExtractCode(Entry entry)
         {
             var code = entry.Value;
+
+            bool isComment = code.Contains("<%--");
+
             code = code.Replace("<%", "");
             code= code.Replace("%>", "");
             code = code.TrimStart();
             code = code.TrimEnd();
 
-            code = ProcessCode(entry, code);
+            if (!isComment)
+            {
+                code = ProcessCode(entry, code);
+            }
+            else
+            {
+                entry.TagType = TagTypeEnum.CodeComment;
+                entry.GroupName = Entry.GetTagType(entry.TagType);
+                code = "// " + code;
+            }
 
-            return code;
+            entry.Value = code;
+
+            return entry;
         }
 
         private static string ProcessCode(Entry entry, string value)
@@ -401,8 +433,8 @@ namespace WebFormParser.Utility.Asp
                 if (entry.Value == "value=")
                     entry.TagType = TagTypeEnum.Value;
 
-                if (entry.TagType is (TagTypeEnum.Content or TagTypeEnum.CodeContent))
-                    entry.IsOpen = true;
+                // if (entry.TagType is (TagTypeEnum.Content or TagTypeEnum.CodeContent))
+                //    entry.IsOpen = true;
 
                 if (block.Length > 0 && entry.TagType != TagTypeEnum.Value)
                     if (block[^1] != ' ')
