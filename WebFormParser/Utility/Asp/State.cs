@@ -25,7 +25,7 @@ namespace WebFormParser.Utility.Asp
 
             OpenCode = 0;
             CloseCode = 0;
-            FuncCount = 0;
+            FuncCount = 1;
         }
 
         private void Reset()
@@ -33,6 +33,8 @@ namespace WebFormParser.Utility.Asp
             OpenCode = 0;
             CloseCode = 0;
             IsCode = false;
+
+            FuncCount += 1;
         }
 
         public void HandleCodeState(string value)
