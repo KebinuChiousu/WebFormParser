@@ -60,7 +60,7 @@ namespace WebFormParser.Utility.Legacy
                 if (prevNode.TagType is (TagTypeEnum.CodeOpen or TagTypeEnum.CodeContent))
                 { ;
                     node.TagType = TagTypeEnum.CodeContent;
-                    node.GroupName = Entry.GetTagType(node.TagType);
+                    node.GroupName = Entry.GetGroupName(node.TagType);
                 }
 
                 if (prevNode.TagType == TagTypeEnum.CodeOpen)
