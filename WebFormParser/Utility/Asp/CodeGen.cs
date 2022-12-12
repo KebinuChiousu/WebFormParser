@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 using WebFormParser.Utility.Asp.Enum;
@@ -344,7 +346,7 @@ namespace WebFormParser.Utility.Asp
             else
             {
                 entry.TagType = TagTypeEnum.CodeComment;
-                entry.GroupName = Entry.GetTagType(entry.TagType);
+                entry.GroupName = Entry.GetGroupName(entry.TagType);
                 code = "// " + code;
             }
 
@@ -405,17 +407,12 @@ namespace WebFormParser.Utility.Asp
             foreach (var entry in htmlDom)
             {
                 
-                if (prevEntry is { TagType: TagTypeEnum.Value }) isValue = true;
-
-                if (isValue)
-                    block.Append('"');
-                
                 if (entry.FileType == AspFileEnum.Html)
                 {
                     if (entry.TagType is TagTypeEnum.Close or TagTypeEnum.Open)
                         if (entry.Value.TrimStart().Length > 2)
                             RenderBlock(ref ret, ref block);
-                    block.Append(entry.Value);
+                    block.Append(FormatHtml(entry));
                 }
                 else
                 {
@@ -424,17 +421,7 @@ namespace WebFormParser.Utility.Asp
                         block.Append("<% " + codeBlock + "; %>");
                 }
 
-                if (isValue)
-                {
-                    block.Append('"');
-                    isValue = false;
-                }
 
-                if (entry.Value == "value=")
-                    entry.TagType = TagTypeEnum.Value;
-
-                // if (entry.TagType is (TagTypeEnum.Content or TagTypeEnum.CodeContent))
-                //    entry.IsOpen = true;
 
                 if (block.Length > 0 && entry.TagType != TagTypeEnum.Value)
                     if (block[^1] != ' ')
@@ -450,6 +437,30 @@ namespace WebFormParser.Utility.Asp
             return ret;
         }
 
+        private static string FormatHtml(Entry entry)
+        {
+            switch (entry.TagType)
+            {
+                case TagTypeEnum.Open:
+                case TagTypeEnum.CodeOpen:
+                    return (entry.HasAttr) ? $"<{entry.Value} ": $"<{entry.Value}>";
+                case TagTypeEnum.Close:
+                case TagTypeEnum.CodeClose:
+                    return SelfClosing(entry.Value) ? entry.Value : $"</{entry.Value}>";
+                default:
+                    return entry.Value;
+            }
+        }
+
+        private static bool SelfClosing(string value)
+        {
+            var tags = new List<string> 
+                { ">", "/>" };
+
+            return tags.Contains(value);
+        }
+
+        [DebuggerStepThrough]
         private static void RenderBlock(ref List<string> blocks, ref StringBuilder block)
         {
             if (string.IsNullOrEmpty(block.ToString()))
