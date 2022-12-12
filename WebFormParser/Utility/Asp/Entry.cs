@@ -1,4 +1,6 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using WebFormParser.Utility.Asp.Enum;
 
 namespace WebFormParser.Utility.Asp;
@@ -11,7 +13,9 @@ public class Entry
     public TagTypeEnum TagType { get; set; }
     public string? CodeFunction { get; set; }
     public bool IsOpen { get; set; }
+    public bool HasAttr { get; set; }
 
+    [DebuggerStepThrough]
     public Entry()
     {
         GroupName = "";
@@ -19,11 +23,25 @@ public class Entry
         FileType = AspFileEnum.Html;
     }
 
+    [DebuggerStepThrough]
+    public bool SelfClosing()
+    {
+        var tags = new List<string>
+        {
+            "area", "base", "br", "col", "embed", "hr", "img", "input",
+            "link", "meta", "param", "source", "track", "wbr"
+        };
+
+        return tags.Contains(Value.ToLower());
+    }
+
+    [DebuggerStepThrough]
     public string GetFileType(AspFileEnum fileType)
     {
         return fileType == AspFileEnum.CodeBehind ? "Code" : "Html";
     }
 
+    [DebuggerStepThrough]
     public static TagTypeEnum GetTagType(TagTypeEnum tagType, bool isCode)
     {
         return tagType switch
@@ -38,6 +56,7 @@ public class Entry
         };
     }
 
+    [DebuggerStepThrough]
     public static string GetGroupName(TagTypeEnum tagType)
     {
         return tagType switch
@@ -59,6 +78,7 @@ public class Entry
         };
     }
 
+    [DebuggerStepThrough]
     public override string ToString()
     {
         string fileType = GetFileType(this.FileType);
