@@ -1,7 +1,5 @@
 ﻿using System.Collections;
 using System.Diagnostics;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
