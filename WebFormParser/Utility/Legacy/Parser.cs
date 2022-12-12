@@ -190,7 +190,7 @@ namespace WebFormParser.Utility.Legacy
 
         private static void SetGroupName(ref Entry entry)
         {
-            entry.GroupName = Entry.GetTagType(entry.TagType);
+            entry.GroupName = Entry.GetGroupName(entry.TagType);
         }
 
         private static void SetTagType(ref Entry entry, State state)
