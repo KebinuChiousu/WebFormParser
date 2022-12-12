@@ -23,7 +23,7 @@ HttpContext.Current.Response.Write("Test!");
 </select>
 </td></tr>
 </table>
-<div>
+<div class="content">
     <% if (value) { %>
          <span>This is a test</span> 
     <% } %>
