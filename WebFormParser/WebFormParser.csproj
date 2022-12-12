@@ -1,34 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Resources\ClassicAspMigration.asp" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Remove="Resources\ClassicAspMigration.asp" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\ClassicAspMigration.asp" />
-  </ItemGroup>
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\ClassicAspMigration.asp" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AngleSharp" Version="0.17.1" />
-    <PackageReference Include="AngleSharp.Css" Version="0.16.4" />
-    <PackageReference Include="AngleSharp.Diffing" Version="0.17.0" />
-    <PackageReference Include="AngleSharp.Io" Version="0.17.0" />
-    <PackageReference Include="AngleSharp.Js" Version="0.15.0" />
-    <PackageReference Include="AngleSharp.Wasm" Version="0.13.0" />
-    <PackageReference Include="AngleSharp.Xml" Version="0.17.0" />
-    <PackageReference Include="AngleSharp.XPath" Version="2.0.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.3.1" />
-    <PackageReference Include="TextDiscovery.AngleSharp" Version="1.0.3" />
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="AngleSharp" Version="0.17.1" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.1" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.1" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.3.1" />
+		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+	</ItemGroup>
 
 </Project>

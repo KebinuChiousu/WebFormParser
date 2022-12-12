@@ -1,9 +1,6 @@
 ﻿using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Text;
-using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Parser;
 using CommandLine;
 using WebFormParser.model;
 using WebFormParser.Utility;

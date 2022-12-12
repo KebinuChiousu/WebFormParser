@@ -6,8 +6,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using AngleSharp.Dom;
-using Microsoft.VisualBasic;
 using WebFormParser.Utility.Asp;
 using WebFormParser.Utility.Asp.Enum;
 
@@ -19,7 +17,8 @@ namespace WebFormParser.Utility
         {
             var input = Util.GetEmbeddedString("ClassicAspMigration.asp");
             var fileName = "ClassicAspMigration";
-            var entries = Parser.GetRegexGroupMatches(input);
+
+            var entries = Parser.ParseDocument(input);
             var htmlList = Asp.CodeGen.Generate(ref entries, mode: AspFileEnum.Html);
             var codeList = Asp.CodeGen.Generate(ref entries, fileName);
 
