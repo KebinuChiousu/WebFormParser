@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AngleSharp.Css.Values;
 using WebFormParser.Utility.Asp.Enum;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -339,7 +338,8 @@ namespace WebFormParser.Utility.Asp
 
             if (!isComment)
             {
-                code = ProcessCode(entry, code);
+                if (!string.IsNullOrEmpty(code))
+                    code = ProcessCode(entry, code);
             }
             else
             {
