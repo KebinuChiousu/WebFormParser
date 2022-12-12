@@ -15,7 +15,7 @@ HttpContext.Current.Response.Write("Test!");
 %>
 <table>
 <tr><td>
-<input <% if (readonly) { %>readonly<% } %> value=<% valueTest %> />
+<input <% if (readonly) { %>readonly<% } %> value=<% valueTest(); %> />
 </td></tr>
 <tr><td>
 <select>
