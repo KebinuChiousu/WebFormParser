@@ -4,9 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AngleSharp.Html.Parser;
-using AngleSharp;
-using AngleSharp.Dom;
 using WebFormParser.model;
 using WebFormParser.Utility.Asp;
 using WebFormParser.Utility.Asp.Enum;
@@ -29,7 +26,7 @@ namespace WebFormParser.Utility
 
                 var input = File.ReadAllText(page);
 
-                var entries = Parser.GetRegexGroupMatches(input);
+                var entries = Asp.Parser.ParseDocument(input);
                 var htmlList = Asp.CodeGen.Generate(ref entries, mode: AspFileEnum.Html);
                 var codeList = Asp.CodeGen.Generate(ref entries, page);
 
