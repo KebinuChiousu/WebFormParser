@@ -373,6 +373,7 @@ namespace WebFormParser.Utility.Asp
         private static string ProcessCodeBlock(Entry entry, string value)
         {
             if (IsStatement(value)) return value;
+            value = FormatHtml(entry);
             value = RenderHtml(value);
             return value;
         }
@@ -437,21 +438,6 @@ namespace WebFormParser.Utility.Asp
             return ret;
         }
 
-        private static string FormatHtml(Entry entry)
-        {
-            switch (entry.TagType)
-            {
-                case TagTypeEnum.Open:
-                case TagTypeEnum.CodeOpen:
-                    return (entry.HasAttr) ? $"<{entry.Value} ": $"<{entry.Value}>";
-                case TagTypeEnum.Close:
-                case TagTypeEnum.CodeClose:
-                    return SelfClosing(entry.Value) ? entry.Value : $"</{entry.Value}>";
-                default:
-                    return entry.Value;
-            }
-        }
-
         private static bool SelfClosing(string value)
         {
             var tags = new List<string> 
@@ -487,6 +473,25 @@ namespace WebFormParser.Utility.Asp
                 codeFunc = entry.CodeFunction;
             }
             return codeFunc;
+        }
+
+        #endregion
+
+        #region "Util Functions"
+
+        private static string FormatHtml(Entry entry)
+        {
+            switch (entry.TagType)
+            {
+                case TagTypeEnum.Open:
+                case TagTypeEnum.CodeOpen:
+                    return (entry.HasAttr) ? $"<{entry.Value} ": $"<{entry.Value}>";
+                case TagTypeEnum.Close:
+                case TagTypeEnum.CodeClose:
+                    return SelfClosing(entry.Value) ? entry.Value : $"</{entry.Value}>";
+                default:
+                    return entry.Value;
+            }
         }
 
         #endregion
