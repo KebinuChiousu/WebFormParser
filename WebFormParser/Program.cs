@@ -32,7 +32,7 @@ namespace WebFormParser
                     .WithParsed(RunOptions);
             }
 
-            if (showHelp)
+            if (showHelp || args.Length > 1)
                 return;
 
             CommandLine.Parser.Default.ParseArguments<DemoOptions>(args)
