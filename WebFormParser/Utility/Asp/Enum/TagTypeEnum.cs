@@ -15,6 +15,7 @@ namespace WebFormParser.Utility.Asp.Enum
         Close = 3,
         Attr = 4,
         Value = 5,
+        DocType = 8,
         Page = 9,
         CodeComment = 10,
         CodeContent = 11,
