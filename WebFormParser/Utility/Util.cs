@@ -11,6 +11,8 @@ using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using WebFormParser.model;
+using WebFormParser.Utility.Asp;
+using WebFormParser.Utility.Asp.Enum;
 
 namespace WebFormParser.Utility
 {
@@ -114,6 +116,29 @@ namespace WebFormParser.Utility
         }
 
         #endregion
+
+        public static void PrintAspNodeTree(List<Entry> entries)
+        {
+            Console.WriteLine("ASP Node Tree:");
+
+            foreach (var entry in entries)
+            {
+                Console.WriteLine($"FileType: {entry.GetFileType(entry.FileType)}");
+                Console.WriteLine($"Group: {entry.GroupName}");
+                Console.WriteLine($"Value: {entry.Value}");
+            }
+        }
+
+        public static void PrintCode(AspFileEnum fileType, List<string> entries)
+        {
+            var title = fileType == AspFileEnum.Html ? "Html: " : "Code: ";
+            Console.WriteLine(title);
+
+            foreach (var entry in entries)
+            {
+                Console.WriteLine(entry);
+            }
+        }
 
         #region "Roslyn Helpers"
 
