@@ -49,7 +49,7 @@ namespace WebFormParser
         {
             Stage = opts.Stage;
 
-            if (!CheckPaths(opts))
+            if (!CheckPaths(ref opts))
                 return;
 
             if (Stage <= 1)
@@ -58,7 +58,7 @@ namespace WebFormParser
                 BusinessLogic.FixCode(opts.Source, opts.Destination);
         }
 
-        private static bool CheckPaths(ProgramOptions opts)
+        private static bool CheckPaths(ref ProgramOptions opts)
         {
             var source = opts.Source;
 
@@ -74,6 +74,8 @@ namespace WebFormParser
                 dest = source + ".new";
 
             EnsureDestFolder(dest, opts.Force);
+
+            opts.Destination = dest;
 
             return true;
         }
