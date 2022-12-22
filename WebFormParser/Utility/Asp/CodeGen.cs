@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
 using WebFormParser.Utility.Asp.Enum;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -29,21 +31,15 @@ namespace WebFormParser.Utility.Asp
 
         #region "CodeBehind"
 
-        private static List<string> GenCodeFile(List<Entry> codeDom, string fileName)
+        public static List<string> GenCodeFile(List<Entry> codeDom, string fileName)
         {
             var ret = new List<string>();
-
-            var ns = GetNamespace(fileName);
-            ns = AddUsing(ns, "System");
-            ns = AddUsing(ns, "System.Web");
-
-            ClassDeclarationSyntax? classDeclaration = null;
-
-            if (ns.Members.Count > 0)
-                classDeclaration = (ClassDeclarationSyntax) ns.Members[0];
-            
+            NamespaceDeclarationSyntax? ns = null;
+            var classDeclaration = ReadCodeFile(ref ns, fileName);
             classDeclaration ??= GetClass(fileName);
             var newClass = classDeclaration;
+
+
 
             codeDom = codeDom.Where(e => e.FileType == AspFileEnum.CodeBehind).ToList();
 
@@ -68,16 +64,9 @@ namespace WebFormParser.Utility.Asp
             if (stmtList.Count > 0)
                 newClass = AddFunction(newClass, codeFunc, stmtList);
 
-            if (ns.Members.Count > 0)
-            {
-                ns.Members.Replace(classDeclaration, newClass);
-            }
-            else
-            {
-                // Add the class to the namespace.
-                ns = ns.AddMembers(newClass);
-            }
-
+            // Add the class to the namespace.
+            ns = ns.AddMembers(newClass);
+            
             // Normalize and get code as string.
             var code = ns
                 .NormalizeWhitespace()
@@ -86,6 +75,31 @@ namespace WebFormParser.Utility.Asp
             ret = code.Split(Environment.NewLine).ToList();
 
             return ret;
+        }
+
+        private static ClassDeclarationSyntax? ReadCodeFile(ref NamespaceDeclarationSyntax? ns, string fileName)
+        {
+            var nds = GetNamespace(fileName: fileName);
+            ClassDeclarationSyntax? classDeclaration = null;
+
+            if (nds.Members.Count > 0)
+                classDeclaration = (ClassDeclarationSyntax) nds.Members[0];
+
+            ns = SyntaxFactory.NamespaceDeclaration(nds.Name);
+
+            foreach (var import in nds.Usings)
+            {
+                ns = ns.AddUsings(import);
+            }
+
+            foreach (var member in nds.Members)
+            {
+                if (member.Kind() == SyntaxKind.ClassDeclaration)
+                    continue;
+                ns = ns.AddMembers(member);
+            }
+
+            return classDeclaration;
         }
 
         #region "Namespace Generation"
@@ -114,7 +128,7 @@ namespace WebFormParser.Utility.Asp
             return null;
         }
 
-        private static NamespaceDeclarationSyntax GetNamespace(string fileName, string ns = "WebForms")
+        private static NamespaceDeclarationSyntax GetNamespace(string ns = "WebForms", string? fileName = null)
         {
             NamespaceDeclarationSyntax? nsDecl = null;
 
@@ -438,14 +452,6 @@ namespace WebFormParser.Utility.Asp
             return ret;
         }
 
-        private static bool SelfClosing(string value)
-        {
-            var tags = new List<string> 
-                { ">", "/>" };
-
-            return tags.Contains(value);
-        }
-
         [DebuggerStepThrough]
         private static void RenderBlock(ref List<string> blocks, ref StringBuilder block)
         {
@@ -484,14 +490,50 @@ namespace WebFormParser.Utility.Asp
             switch (entry.TagType)
             {
                 case TagTypeEnum.Open:
+                    return RenderHtmlTag(entry);
                 case TagTypeEnum.CodeOpen:
-                    return (entry.HasAttr) ? $"<{entry.Value} ": $"<{entry.Value}>";
-                case TagTypeEnum.Close:
+                    return (entry.HasAttributes) ? $"<{entry.Value} ": $"<{entry.Value}>";
                 case TagTypeEnum.CodeClose:
-                    return SelfClosing(entry.Value) ? entry.Value : $"</{entry.Value}>";
+                    return entry.SelfClosing ? entry.Value : $"</{entry.Value}>";
                 default:
                     return entry.Value;
             }
+        }
+
+        private static string RenderHtmlTag(Entry entry)
+        {
+            if (entry.TagType == TagTypeEnum.Content)
+            {
+                return Environment.NewLine + entry.Value;
+            }
+
+            var html = new StringBuilder();
+            
+            html.Append($"<{entry.Value}");
+
+            if (entry.HasAttributes)
+            {
+                html.Append(" ");
+                foreach (var attr in entry.Attributes)
+                {
+                    html.Append($"{attr.Key}=\"{attr.Value}\" ");
+                }
+            }
+
+            html.Append(entry.SelfClosing ? "/>" : ">");
+
+            if (entry.HasChildren)
+            {
+                foreach (var child in entry.Children)
+                {
+                    html.AppendLine(RenderHtmlTag(child));
+                }
+            }
+
+            if (!entry.SelfClosing)
+                html.Append($"</{entry.Value}>");
+
+            return html.ToString();
         }
 
         #endregion
