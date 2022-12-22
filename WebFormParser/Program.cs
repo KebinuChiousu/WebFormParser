@@ -49,12 +49,31 @@ namespace WebFormParser
         {
             Stage = opts.Stage;
 
+            if (!CheckPaths(opts))
+                return;
+
             if (Stage <= 1)
                 BusinessLogic.CleanCode(opts.Source, opts.Destination);
             if (Stage == 2)
                 BusinessLogic.FixCode(opts.Source, opts.Destination);
         }
 
+        private static bool CheckPaths(ProgramOptions opts)
+        {
+            if (!Directory.Exists(opts.Source))
+            {
+                Console.WriteLine("Specify a valid Source Folder!");
+                return false;
+            }
+
+            if (Directory.Exists(opts.Destination))
+                return true;
+            
+            Console.WriteLine("Specify a valid Destination Folder!");
+            
+            return false;
+
+        }
 
         private static void RunDemo()
         {
