@@ -7,6 +7,11 @@
         "Help": {
             "commandName": "Project",
             "commandLineArgs": "--help"
+        },
+        "BFIMS": {
+            "commandName": "Project",
+            "commandLineArgs": "--src D:\\Users\\kmeredith\\source\\repos\\NDE\\Apps\\BFIMS.NET\\BFIMS -f"
         }
+
     }
 }
