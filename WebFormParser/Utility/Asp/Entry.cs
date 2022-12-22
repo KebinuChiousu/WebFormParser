@@ -13,10 +13,29 @@ public class Entry
     public TagTypeEnum TagType { get; set; }
     public string? CodeFunction { get; set; }
     public bool IsOpen { get; set; }
-    
+
+    public bool NeedsChildren
+    {
+        get { return RequiresChildren();  }
+    }
+
+    public string InnerText { get; set; }
+
+    public List<Entry> Children { get; }
+
     public bool HasAttributes
     {
         get { return Attributes.Count > 0; }
+    }
+
+    public bool HasChildren
+    {
+        get { return Children.Count > 0; }
+    }
+
+    public bool SelfClosing
+    {
+        get { return IsSelfClosing(); }
     }
 
     public Dictionary<string, string> Attributes { get; set; }
@@ -25,18 +44,30 @@ public class Entry
     public Entry()
     {
         GroupName = "";
+        InnerText = "";
         Value = "";
         FileType = AspFileEnum.Html;
         Attributes = new Dictionary<string, string>();
+        Children = new List<Entry>();
     }
 
     [DebuggerStepThrough]
-    public bool SelfClosing()
+    private bool IsSelfClosing()
     {
         var tags = new List<string>
         {
             "area", "base", "br", "col", "embed", "hr", "img", "input",
             "link", "meta", "param", "source", "track", "wbr"
+        };
+
+        return tags.Contains(Value.ToLower());
+    }
+
+    private bool RequiresChildren()
+    {
+        var tags = new List<string>
+        {
+            "select"
         };
 
         return tags.Contains(Value.ToLower());

@@ -17,6 +17,7 @@ using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using HtmlAgilityPack;
 using System.Reflection;
+using System.Reflection.Metadata;
 
 namespace WebFormParser.Utility.Asp
 {
@@ -26,13 +27,21 @@ namespace WebFormParser.Utility.Asp
 
         public static List<Entry> ParseDocument(string input)
         {
+            // Phase I - Identify Lines
             var nodes = ParseLines(input);
 
             if (nodes.Count == 0)
                 return nodes;
 
+            // Phase II - Identify Html
             nodes = ParseHtml(nodes);
+
+            // Phase III - Add Code Function Names
             nodes = LabelCodeFunctions(nodes);
+
+            // Phase IV - Consolidate Node List
+            nodes = ConsolidateNodes(nodes);
+
             return nodes;
         }
 
@@ -58,6 +67,7 @@ namespace WebFormParser.Utility.Asp
                     HandleCodeState(ref state, line);
                 }
                 entry.Value = line;
+                entry.InnerText = line;
                 nodes.Add(entry);
             }
 
@@ -156,7 +166,7 @@ namespace WebFormParser.Utility.Asp
 
             if (htmlDoc.Body == null)
                 return;
-
+            
             if (!htmlDoc.HasChildNodes)
                 return;
 
@@ -210,9 +220,7 @@ namespace WebFormParser.Utility.Asp
         }
 
         private static void HandleNode(ref List<Entry> entries, ref State state, INode? node)
-        {
-
-            var hasAttr = false;
+        { ;
             if (node == null)
                 return;
 
@@ -235,15 +243,39 @@ namespace WebFormParser.Utility.Asp
                 ProcessCodeBlock(ref entry, ref state, node);
 
             GetAttributes(ref entry, node);
+            HandlePartialTag(ref entry, node);
 
             entries.Add(entry);
 
             if (node.NodeType == NodeType.Comment)
                 return;
 
+            var children = entry.Children;
+
             foreach (var child in node.ChildNodes)
             {
-                HandleNode(ref entries, ref state, child);
+                HandleNode(ref children, ref state, child);
+            }
+        }
+
+        private static void HandlePartialTag(ref Entry entry, INode node)
+        {
+            if (node.HasChildNodes)
+                return;
+
+            if (node.NodeName != "TABLE")
+                return;
+
+            entry.FileType = AspFileEnum.CodeBehind;
+
+            switch (node.NodeType)
+            {
+                case NodeType.Element:
+                    entry.TagType = TagTypeEnum.CodeOpen;
+                    break;
+                default:
+                    entry.TagType = TagTypeEnum.CodeContent;
+                    break;
             }
         }
 
@@ -290,6 +322,41 @@ namespace WebFormParser.Utility.Asp
                     if (prevEntry.FileType == AspFileEnum.CodeBehind)
                         funcCount++;
             }
+
+            return nodes;
+        }
+
+        #endregion
+
+        #region "Phase IV - Consolidate Node List"
+
+        private static List<Entry> ConsolidateNodes(List<Entry> entries)
+        {
+            var nodes = new List<Entry>();
+            var entryCount = entries.Count;
+
+            for (var idx = 0; idx < entryCount; idx++)
+            {
+                var entry = entries[idx];
+
+                if (entry is not { NeedsChildren: true, HasChildren: false })
+                {
+                    nodes.Add(entry);
+                    continue;
+                }
+
+                entry.Children.Add(entries[idx +1]);
+                entries.RemoveAt(idx + 1);
+                entryCount--;
+                nodes.Add(entry);
+            }
+
+            if (nodes[^1].TagType != TagTypeEnum.Content)
+                return nodes;
+
+            // Last entry should always be an HTML Tag not content.
+            nodes[^2].Children.Add(nodes[^1]);
+            nodes.RemoveAt(nodes.Count - 1);
 
             return nodes;
         }
