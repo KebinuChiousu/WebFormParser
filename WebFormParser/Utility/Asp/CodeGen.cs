@@ -407,15 +407,20 @@ namespace WebFormParser.Utility.Asp
             string code = "{};";
             char check = stmt[^1];
 
-            if (IsJs(stmt)) return false;
+            if (IsJsAttr(stmt)) return false;
             if (stmt.StartsWith("<")) return false;
 
             return code.Contains(check);
         }
 
-        private static bool IsJs(string value)
+        private static bool IsJsAttr(string value)
         {
-            return value.Contains("onmouseover");
+            var tags = new List<string>
+            {
+                "onmouseover", "onmouseout"
+            };
+
+            return tags.Contains(value.ToLower());
         }
 
         #endregion
