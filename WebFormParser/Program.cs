@@ -60,19 +60,33 @@ namespace WebFormParser
 
         private static bool CheckPaths(ProgramOptions opts)
         {
-            if (!Directory.Exists(opts.Source))
+            var source = opts.Source;
+
+            if (!Directory.Exists(source))
             {
                 Console.WriteLine("Specify a valid Source Folder!");
                 return false;
             }
 
-            if (Directory.Exists(opts.Destination))
-                return true;
-            
-            Console.WriteLine("Specify a valid Destination Folder!");
-            
-            return false;
+            var dest = opts.Destination;
 
+            if (string.IsNullOrEmpty(dest))
+                dest = source + ".new";
+
+            EnsureDestFolder(dest, opts.Force);
+
+            return true;
+        }
+
+        private static void EnsureDestFolder(string dest, bool force)
+        {
+            if (Directory.Exists(dest))
+                if (!force)
+                    return;
+                else
+                    Directory.Delete(dest, true);
+
+            Directory.CreateDirectory(dest);
         }
 
         private static void RunDemo()
