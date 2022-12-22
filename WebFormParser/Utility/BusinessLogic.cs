@@ -28,7 +28,20 @@ namespace WebFormParser.Utility
 
                 var entries = Asp.Parser.ParseDocument(input);
                 var htmlList = Asp.CodeGen.Generate(ref entries, mode: AspFileEnum.Html);
+
+                if (htmlList.Count == 0)
+                    continue;
+
                 var codeList = Asp.CodeGen.Generate(ref entries, page);
+
+                // Util.PrintAspNodeTree(entries);
+                
+                // _ = Console.ReadKey();
+
+                // Util.PrintCode(AspFileEnum.Html, htmlList);
+                // Console.WriteLine("");
+                // Util.PrintCode(AspFileEnum.CodeBehind, codeList);
+                // _ = Console.ReadKey();
 
                 Util.WriteFile(htmlList, src, dest, page);
                 Util.WriteFile(codeList, src, dest, page + ".cs");
