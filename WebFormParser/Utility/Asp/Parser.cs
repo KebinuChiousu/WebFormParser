@@ -36,6 +36,8 @@ namespace WebFormParser.Utility.Asp
             // Phase II - Identify Html
             nodes = ParseHtml(nodes);
 
+            BypassComments(ref nodes);
+
             // Phase III - Add Code Function Names
             nodes = LabelCodeFunctions(nodes);
 
@@ -43,6 +45,23 @@ namespace WebFormParser.Utility.Asp
             nodes = ConsolidateNodes(nodes);
 
             return nodes;
+        }
+
+        private static void BypassComments(ref List<Entry> entries)
+        {
+            foreach (var entry in entries)
+            {
+                if (entry.TagType != TagTypeEnum.CodeComment)
+                    continue;
+
+                var comment = entry.Value;
+                comment = comment.Replace("<%--", "<!--");
+                comment = comment.Replace("--%>", "-->");
+
+                entry.Value = comment;
+                entry.TagType = TagTypeEnum.Comment;
+                entry.FileType = AspFileEnum.Html;
+            }
         }
 
         #region "Phase I - Identify Lines"
@@ -314,7 +333,7 @@ namespace WebFormParser.Utility.Asp
                 var entry = entries[idx];
 
                 if (entry.FileType == AspFileEnum.CodeBehind)
-                    entry.CodeFunction = $"render_logic_{funcCount:D2}";
+                    entry.CodeFunction = $"render_logic_{funcCount:D2}()";
 
                 nodes.Add(entry);
 
