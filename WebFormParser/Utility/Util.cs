@@ -117,6 +117,8 @@ namespace WebFormParser.Utility
 
         #endregion
 
+        #region "Debug ASPX Code"
+        
         public static void PrintAspNodeTree(List<Entry> entries)
         {
             Console.WriteLine("ASP Node Tree:");
@@ -139,6 +141,8 @@ namespace WebFormParser.Utility
                 Console.WriteLine(entry);
             }
         }
+
+        #endregion
 
         #region "Roslyn Helpers"
 
@@ -475,7 +479,6 @@ namespace WebFormParser.Utility
         }
 
         #endregion
-
 
     }
 }

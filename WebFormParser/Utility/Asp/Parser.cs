@@ -1,16 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using WebFormParser.model;
 using WebFormParser.Utility.Asp.Enum;
+using AngleSharp;
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
+using AngleSharp.Html.Parser;
+using HtmlAgilityPack;
+using System.Reflection;
 
 namespace WebFormParser.Utility.Asp
 {
@@ -20,23 +26,196 @@ namespace WebFormParser.Utility.Asp
 
         public static List<Entry> ParseDocument(string input)
         {
-            var htmlDoc = new HtmlAgilityPack.HtmlDocument();
-            htmlDoc.LoadHtml(input);
-            var htmlNodes = htmlDoc.DocumentNode.ChildNodes;
+            var nodes = ParseLines(input);
+
+            if (nodes.Count == 0)
+                return nodes;
+
+            nodes = ParseHtml(nodes);
+            nodes = LabelCodeFunctions(nodes);
+            return nodes;
+        }
+
+        #region "Phase I - Identify Lines"
+
+        private static List<Entry> ParseLines(string input)
+        {
+            var nodes = new List<Entry>();
+            var lines = input.Split(Environment.NewLine);
+
+            if (lines.Length == 1)
+                return nodes;
+
+            var state = new State();
+
+            foreach (var line in lines)
+            {
+                var entry = new Entry();
+                if (line.StartsWith("<%") || state.IsCode)
+                {
+                    entry.FileType = AspFileEnum.CodeBehind;
+                    state.IsCode = true;
+                    HandleCodeState(ref state, line);
+                }
+                entry.Value = line;
+                nodes.Add(entry);
+            }
+
+            nodes = CategorizeNodes(nodes);
+
+            return nodes;
+        }
+
+        public static List<Entry> CategorizeNodes(List<Entry> entries)
+        {
             var nodes = new List<Entry>();
 
             var state = new State();
 
-            foreach (var node in htmlNodes)
+            foreach (var entry in entries)
             {
-                HandleNode(ref nodes, ref state, node);
+                var value = entry.Value;
+
+                if (value.Length <= 2)
+                    continue;
+
+                switch (entry.FileType)
+                {
+                    case AspFileEnum.CodeBehind:
+                        nodes.Add(HandleCodeNode(ref state, entry));
+                        break;
+                    default:
+                        nodes.Add(HandleHtmlNode(ref state, entry));
+                        break;
+                }
             }
 
             return nodes;
         }
 
-        private static void HandleNode(ref List<Entry> entries, ref State state, HtmlNode node)
+        public static Entry HandleCodeNode(ref State state, Entry entry)
         {
+            var value = entry.Value;
+
+            if (value.StartsWith("<%--")) state.IsComment = true;
+
+            entry.TagType = (state.IsComment) ? TagTypeEnum.CodeComment : TagTypeEnum.CodeContent;
+
+            if (value.Contains("--%>")) state.IsComment = false;
+
+            if (!value.StartsWith("<%@ Page"))
+                return entry;
+
+            state.IsComment = false;
+            entry.FileType = AspFileEnum.Html;
+            entry.TagType = TagTypeEnum.Page;
+
+            return entry;
+        }
+
+        public static Entry HandleHtmlNode(ref State state, Entry entry)
+        {
+            var value = entry.Value;
+
+            if (value.StartsWith("<!--")) state.IsComment = true;
+
+            entry.TagType = (state.IsComment) ? TagTypeEnum.Comment : TagTypeEnum.Content;
+
+            if (value.Contains("-->")) state.IsComment = false;
+
+            return entry;
+
+        }
+
+        #endregion
+
+        #region "Phase II - Identify Html"
+
+        public static List<Entry> ParseHtml(List<Entry> entries)
+        {
+            var nodes = new List<Entry>();
+
+            foreach (var entry in entries)
+            {
+                if (entry.FileType == AspFileEnum.CodeBehind || entry.TagType == TagTypeEnum.Page)
+                {
+                    nodes.Add(entry);
+                    continue;
+                }
+
+                ParseHtmlFragment(ref nodes, entry.Value);
+            }
+
+            return nodes;
+        }
+
+        public static void ParseHtmlFragment(ref List<Entry> entries, string source)
+        {
+            var parser = new HtmlParser();
+            var htmlDoc = parser.ParseDocument(source);
+
+            if (htmlDoc.Body == null)
+                return;
+
+            if (!htmlDoc.HasChildNodes)
+                return;
+
+            var htmlNode = htmlDoc.ChildNodes[0];
+
+            var nodes = GetNodes(htmlNode.ChildNodes);
+
+            if (nodes == null) return;
+
+            var state = new State();
+
+            foreach (var node in nodes)
+            {
+                HandleNode(ref entries, ref state, node);
+            }
+
+        }
+
+        /// <summary>
+        /// Return Elements of Either Head or Body Tag.
+        /// </summary>
+        /// <param name="nodes"></param>
+        /// <returns></returns>
+        private static INodeList? GetNodes(INodeList nodes)
+        {
+            if (nodes.Length == 0)
+                return null;
+
+            var headCount = nodes[0].ChildNodes.Length;
+            return headCount > 0 ? nodes[0].ChildNodes : nodes[1].ChildNodes;
+        }
+
+        private static void GetAttributes(ref Entry entry, INode node)
+        {
+            if (node.NodeType != NodeType.Element) return;
+
+            var ele = (IElement)node;
+            var allProps = ele.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).OrderBy(pi => pi.Name).ToList();
+            PropertyInfo propInfo = ele.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Instance).Single(pi => pi.Name == "Attributes");
+            IEnumerable<object> attributes = (IEnumerable<object>)propInfo.GetValue(ele, null);
+
+            var dict = new Dictionary<string, string>();
+
+            foreach (AngleSharp.Dom.Attr attr in attributes)
+            {
+                if (!dict.ContainsKey(attr.Name))
+                    dict.Add(attr.Name, attr.Value);
+            }
+
+            entry.Attributes = dict;
+        }
+
+        private static void HandleNode(ref List<Entry> entries, ref State state, INode? node)
+        {
+
+            var hasAttr = false;
+            if (node == null)
+                return;
+
             Entry closingTag;
             var block = GetValue(node);
 
@@ -55,67 +234,77 @@ namespace WebFormParser.Utility.Asp
             if (state.IsCode)
                 ProcessCodeBlock(ref entry, ref state, node);
 
-            entry.IsOpen = node.HasAttributes;
-            entry.HasAttr = node.HasAttributes;
+            GetAttributes(ref entry, node);
 
             entries.Add(entry);
 
-            if (node.HasAttributes) ProcessAttributes(ref entries, ref state, node);
+            if (node.NodeType == NodeType.Comment)
+                return;
 
-            if (!node.HasChildNodes)
-            {
-                if (!node.HasAttributes)
-                    return;
-
-                CloseOpenTag(ref entries, entry, state);
-                if (entry.SelfClosing())
-                    return;
-                
-                closingTag = GetClosingTag(node.Name, state);
-                entries.Add(closingTag);
-            }
-
-            if (node.HasAttributes)
-                CloseOpenTag(ref entries, entry, state);
-            
             foreach (var child in node.ChildNodes)
             {
                 HandleNode(ref entries, ref state, child);
             }
-            
-            closingTag = GetClosingTag(node.Name, state);
-            entries.Add(closingTag);
         }
 
-        private static void CloseOpenTag( ref List<Entry> entries, Entry node, State state)
+        private static string GetValue(INode? node)
         {
-            bool closed = node.SelfClosing();
-            
-            var entry = new Entry
+            if (node == null)
+                return string.Empty;
+
+            var pattern = @"[\p{C}-[\r\n\t]]+";
+
+            var value = node.NodeType switch
             {
-                Value = closed ? "/>" : ">",
-                TagType = Entry.GetTagType(TagTypeEnum.Close, state.IsCode),
-                IsOpen = !closed
+                NodeType.Element => node.NodeName.ToLower(),
+                _ => node.NodeValue
             };
-            entry.GroupName = Entry.GetGroupName(entry.TagType);
-            entries.Add(entry);
+
+            value = Regex.Replace(value, pattern, string.Empty);
+            if (value == Environment.NewLine) value = string.Empty;
+
+            return value;
         }
 
-        private static void ProcessAttributes(ref List<Entry> entries, ref State state, HtmlNode node)
+        #endregion
+
+        #region "Phase III - Add Code Function Name"
+
+        private static List<Entry> LabelCodeFunctions(List<Entry> entries)
         {
-            foreach (var attr in node.Attributes)
+            var nodes = new List<Entry>();
+
+            var funcCount = 1;
+
+            for (var idx = 1; idx < entries.Count; idx++)
             {
-                ProcessAttr(ref entries, ref state, attr);
+                var prevEntry = entries[idx - 1];
+                var entry = entries[idx];
+
+                if (entry.FileType == AspFileEnum.CodeBehind)
+                    entry.CodeFunction = $"render_logic_{funcCount:D2}";
+
+                nodes.Add(entry);
+
+                if (entry.FileType == AspFileEnum.Html)
+                    if (prevEntry.FileType == AspFileEnum.CodeBehind)
+                        funcCount++;
             }
+
+            return nodes;
         }
+
+        #endregion
+
+        #region "Legacy Parser"
 
         private static void ProcessAttr(ref List<Entry> entries, ref State state, HtmlAttribute attr)
         {
 
             Entry? entry = null;
             var result = string.Empty;
-            
-            bool check1 = IsCode(attr.Name); 
+
+            bool check1 = IsCode(attr.Name);
             bool check2 = IsCode(attr.Value);
 
             bool isCode = check1 || check2;
@@ -130,7 +319,7 @@ namespace WebFormParser.Utility.Asp
                 entry = AddAttr(value, isCode, true, ref state);
                 if (entry != null && isCode) entries.Add(entry);
             }
-            
+
             if (check2)
                 blocks.AddRange(GetBlocks(attr.Value, false));
             else
@@ -140,8 +329,8 @@ namespace WebFormParser.Utility.Asp
                     entry = AddAttr(value, isCode, false, ref state);
                 else
                     if (entry != null)
-                        entry.Value += $"\"{value}\"";
-                
+                    entry.Value += $"\"{value}\"";
+
                 if (entry != null) entries.Add(entry);
             }
 
@@ -203,7 +392,7 @@ namespace WebFormParser.Utility.Asp
             return result;
         }
 
-        private static void ProcessCodeBlock(ref Entry entry, ref State state, HtmlNode node)
+        private static void ProcessCodeBlock(ref Entry entry, ref State state, INode? node)
         {
             var block = entry.Value;
             var begIdx = block.IndexOf("<%") - 1;
@@ -214,7 +403,7 @@ namespace WebFormParser.Utility.Asp
 
             entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
 
-            if (node.NodeType == HtmlNodeType.Text)
+            if (node.NodeType == NodeType.Text)
             {
                 entry.TagType = TagTypeEnum.CodeContent;
                 entry.GroupName = Entry.GetGroupName(entry.TagType);
@@ -223,33 +412,19 @@ namespace WebFormParser.Utility.Asp
             HandleCodeState(ref state, entry.Value);
         }
 
-        private static Entry GetClosingTag(string name, State state)
-        {
-            var tagType = state.IsCode ? TagTypeEnum.CodeClose : TagTypeEnum.Close;
+        #endregion
 
-            var entry = new Entry()
-            {
-                Value = name,
-                TagType = tagType,
-                GroupName = Entry.GetGroupName(tagType),
-                FileType = state.IsCode ? AspFileEnum.CodeBehind : AspFileEnum.Html
-            };
 
-            if (state.IsCode)
-                entry.CodeFunction = "page_logic_" + state.FuncCount.ToString("D2");
-
-            return entry;
-        }
-        private static void HandleCodeState(ref State state, string block)
-        {
-            state.OpenCode += block.Count(f => f == '{');
-            state.CloseCode += block.Count(f => f == '}');
-            state.HandleCodeState(block);
-        }
 
         private static string FormatValue(Entry entry, string value)
         {
             var ret = value;
+
+            var test = value.Replace(Environment.NewLine, "");
+
+            if (string.IsNullOrEmpty(test))
+                return string.Empty;
+
             switch (entry.TagType)
             {
                 case TagTypeEnum.Page:
@@ -260,61 +435,42 @@ namespace WebFormParser.Utility.Asp
             }
         }
 
-        private static string GetValue(HtmlNode node)
+
+
+        private static TagTypeEnum GetTagType(INode? node, State state)
         {
-            var pattern = @"[\p{C}-[\r\n\t]]+";
-            var value = string.Empty;
-            
+            if (node == null)
+                return TagTypeEnum.Content;
+
             switch (node.NodeType)
             {
-                case HtmlNodeType.Comment:
-                    value = node.InnerHtml;
-                    break;
-                case HtmlNodeType.Element:
-                    value = node.Name;
-                    break;
-                default:
-                    value = node.InnerText;
-                    break;
-            }
-
-            value = Regex.Replace(value, pattern, string.Empty);
-            if (value == Environment.NewLine) value = string.Empty;
-
-            return value;
-        }
-
-        private static TagTypeEnum GetTagType(HtmlNode node, State state)
-        {
-            switch (node.NodeType)
-            {
-                case HtmlNodeType.Comment:
+                case NodeType.Comment:
                     return state.IsCode ? TagTypeEnum.CodeComment : TagTypeEnum.Comment;
-                case HtmlNodeType.Text:
-                    return CategorizeText(node, state);
-                case HtmlNodeType.Element:
+                case NodeType.Element:
                     return state.IsCode ? TagTypeEnum.CodeOpen : TagTypeEnum.Open;
                 default:
                     return state.IsCode ? TagTypeEnum.CodeContent : TagTypeEnum.Content;
             }
-        }
 
-        private static TagTypeEnum CategorizeText(HtmlNode node, State state)
-        {
-            var block = node.InnerText;
-            if (block.Contains("<%@")) return TagTypeEnum.Page;
-            return TagTypeEnum.Content;
+            ;
         }
 
         private static bool IsCode(string value)
         {
             if (string.IsNullOrEmpty(value))
                 return false;
-            
+
             var isCode = value.Contains("<%") || value.Contains("%>");
             var isPage = value.Contains("<%@");
 
             return isCode && !isPage;
+        }
+
+        private static void HandleCodeState(ref State state, string block)
+        {
+            state.OpenCode += block.Count(f => f == '{');
+            state.CloseCode += block.Count(f => f == '}');
+            state.HandleCodeState(block);
         }
     }
 }

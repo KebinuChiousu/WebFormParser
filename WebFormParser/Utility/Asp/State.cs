@@ -16,7 +16,9 @@ namespace WebFormParser.Utility.Asp
         public int OpenCode { get; set; }
         public int CloseCode { get; set; }
         public int FuncCount { get; set; }
+        public bool IsComment { get; set; }
 
+        [System.Diagnostics.DebuggerStepThrough]
         public State()
         {
             IsTag = false;

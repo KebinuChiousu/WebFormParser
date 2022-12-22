@@ -13,7 +13,13 @@ public class Entry
     public TagTypeEnum TagType { get; set; }
     public string? CodeFunction { get; set; }
     public bool IsOpen { get; set; }
-    public bool HasAttr { get; set; }
+    
+    public bool HasAttributes
+    {
+        get { return Attributes.Count > 0; }
+    }
+
+    public Dictionary<string, string> Attributes { get; set; }
 
     [DebuggerStepThrough]
     public Entry()
@@ -21,6 +27,7 @@ public class Entry
         GroupName = "";
         Value = "";
         FileType = AspFileEnum.Html;
+        Attributes = new Dictionary<string, string>();
     }
 
     [DebuggerStepThrough]
