@@ -49,8 +49,11 @@ namespace WebFormParser.Utility.Asp
 
         private static void BypassComments(ref List<Entry> entries)
         {
-            foreach (var entry in entries)
+            var entryCount = entries.Count;
+            
+            for (var idx = 0; idx < entryCount; idx++)
             {
+                var entry = entries[idx];
                 if (entry.TagType != TagTypeEnum.CodeComment)
                     continue;
 
@@ -61,6 +64,18 @@ namespace WebFormParser.Utility.Asp
                 entry.Value = comment;
                 entry.TagType = TagTypeEnum.Comment;
                 entry.FileType = AspFileEnum.Html;
+
+                if (idx == 0) continue;
+
+                var prevEntry = entries[idx - 1];
+
+                if (prevEntry.TagType != TagTypeEnum.Comment)
+                    continue;
+
+                prevEntry.Children.Add(entry);
+                entries.RemoveAt(idx);
+                idx--;
+                entryCount--;
             }
         }
 
@@ -333,7 +348,7 @@ namespace WebFormParser.Utility.Asp
                 var entry = entries[idx];
 
                 if (entry.FileType == AspFileEnum.CodeBehind)
-                    entry.CodeFunction = $"render_logic_{funcCount:D2}()";
+                    entry.CodeFunction = $"render_logic_{funcCount:D2}";
 
                 nodes.Add(entry);
 
