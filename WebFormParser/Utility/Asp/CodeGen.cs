@@ -66,7 +66,7 @@ namespace WebFormParser.Utility.Asp
 
             // Add the class to the namespace.
             ns = ns.AddMembers(newClass);
-            
+
             // Normalize and get code as string.
             var code = ns
                 .NormalizeWhitespace()
@@ -83,7 +83,7 @@ namespace WebFormParser.Utility.Asp
             ClassDeclarationSyntax? classDeclaration = null;
 
             if (nds.Members.Count > 0)
-                classDeclaration = (ClassDeclarationSyntax) nds.Members[0];
+                classDeclaration = (ClassDeclarationSyntax)nds.Members[0];
 
             ns = SyntaxFactory.NamespaceDeclaration(nds.Name);
 
@@ -204,7 +204,7 @@ namespace WebFormParser.Utility.Asp
         {
             if (baseClassList == null)
                 return classDeclaration;
-            
+
             var baseTypeList = new List<BaseTypeSyntax>();
 
             foreach (var baseClass in baseClassList)
@@ -256,7 +256,7 @@ namespace WebFormParser.Utility.Asp
                 .AddAccessorListAccessors(
                     SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
                     SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)));
-           
+
             return propertyDeclaration;
         }
 
@@ -291,7 +291,7 @@ namespace WebFormParser.Utility.Asp
             return classDeclaration.AddMembers(method);
         }
 
-        private static MethodDeclarationSyntax AddMethod(string methodType, string methodName, 
+        private static MethodDeclarationSyntax AddMethod(string methodType, string methodName,
             List<StatementSyntax> methodBody, List<SyntaxTrivia> comments,
             ModifierEnum modifier = ModifierEnum.Public)
         {
@@ -313,7 +313,7 @@ namespace WebFormParser.Utility.Asp
         private static SyntaxToken GetModifier(ModifierEnum modifier)
         {
             SyntaxToken modifierToken;
-            
+
             switch (modifier)
             {
                 case ModifierEnum.Protected:
@@ -324,7 +324,7 @@ namespace WebFormParser.Utility.Asp
                     break;
                 default:
                     modifierToken = SyntaxFactory.Token(SyntaxKind.PublicKeyword);
-                    break; 
+                    break;
             }
 
             return modifierToken;
@@ -347,8 +347,9 @@ namespace WebFormParser.Utility.Asp
 
             bool isComment = code.Contains("<%--");
 
+            code = code.Replace("<%=", "");
             code = code.Replace("<%", "");
-            code= code.Replace("%>", "");
+            code = code.Replace("%>", "");
             code = code.TrimStart();
             code = code.TrimEnd();
 
@@ -386,6 +387,7 @@ namespace WebFormParser.Utility.Asp
 
         private static string ProcessCodeBlock(Entry entry, string value)
         {
+           
             if (IsStatement(value)) return value;
             value = FormatHtml(entry);
             value = RenderHtml(value);
@@ -394,7 +396,10 @@ namespace WebFormParser.Utility.Asp
 
         private static string RenderHtml(string value)
         {
-            return $"HttpContext.Current.Response.Write(\"{value}\");";
+
+            value = value.Replace("\"", "|");
+
+            return $"base.RenderHtml(\"{value}\");";
         }
 
         private static bool IsStatement(string stmt)
@@ -402,7 +407,15 @@ namespace WebFormParser.Utility.Asp
             string code = "{};";
             char check = stmt[^1];
 
+            if (IsJs(stmt)) return false;
+            if (stmt.StartsWith("<")) return false;
+
             return code.Contains(check);
+        }
+
+        private static bool IsJs(string value)
+        {
+            return value.Contains("onmouseover");
         }
 
         #endregion
@@ -421,7 +434,7 @@ namespace WebFormParser.Utility.Asp
 
             foreach (var entry in htmlDom)
             {
-                
+
                 if (entry.FileType == AspFileEnum.Html)
                 {
                     if (entry.TagType is TagTypeEnum.Close or TagTypeEnum.Open)
@@ -433,7 +446,7 @@ namespace WebFormParser.Utility.Asp
                 {
                     var codeBlock = HandleCodeBlock(entry, ref codeFunc);
                     if (!string.IsNullOrEmpty(codeBlock))
-                        block.Append("<% " + codeBlock + "; %>");
+                        block.Append("<% " + codeBlock + "(); %>");
                 }
 
 
@@ -457,7 +470,7 @@ namespace WebFormParser.Utility.Asp
         {
             if (string.IsNullOrEmpty(block.ToString()))
                 return;
-            
+
             blocks.Add(block.ToString());
             block.Clear();
         }
@@ -492,7 +505,7 @@ namespace WebFormParser.Utility.Asp
                 case TagTypeEnum.Open:
                     return RenderHtmlTag(entry);
                 case TagTypeEnum.CodeOpen:
-                    return (entry.HasAttributes) ? $"<{entry.Value} ": $"<{entry.Value}>";
+                    return (entry.HasAttributes) ? $"<{entry.Value} " : $"<{entry.Value}>";
                 case TagTypeEnum.CodeClose:
                     return entry.SelfClosing ? entry.Value : $"</{entry.Value}>";
                 default:
@@ -508,7 +521,7 @@ namespace WebFormParser.Utility.Asp
             }
 
             var html = new StringBuilder();
-            
+
             html.Append($"<{entry.Value}");
 
             if (entry.HasAttributes)
