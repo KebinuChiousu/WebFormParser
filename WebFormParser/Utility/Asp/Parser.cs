@@ -35,15 +35,15 @@ namespace WebFormParser.Utility.Asp
 
             // Phase II - Identify Html
             nodes = ParseHtml(nodes);
-
             BypassComments(ref nodes);
 
-            // Phase III - Add Code Function Names
+            // Phase III - Identify Html that should be treated as code
+            nodes = UpdateNodeClassification(nodes);
+
+            // Phase IV - Add Code Function Names
             nodes = LabelCodeFunctions(nodes);
 
-
-
-            // Phase IV - Consolidate Node List
+            // Phase V - Consolidate Node List
             nodes = ConsolidateNodes(nodes);
 
             return nodes;
@@ -132,10 +132,10 @@ namespace WebFormParser.Utility.Asp
                 {
                     entry.FileType = AspFileEnum.CodeBehind;
                     state.IsCode = true;
-                    HandleCodeState(ref state, line);
                 }
                 entry.Value = line;
                 entry.InnerText = line;
+                HandleCodeState(ref state, entry);
                 ClassifyNode(ref entry);
                 nodes.Add(entry);
             }
@@ -375,7 +375,50 @@ namespace WebFormParser.Utility.Asp
 
         #endregion
 
-        #region "Phase III - Add Code Function Name"
+        #region "Phase III - Complete Code Blocks"
+
+        private static List<Entry> UpdateNodeClassification(List<Entry> entries)
+        {
+            var nodes = new List<Entry>();
+
+            var state = new State();
+
+            foreach (var entry in entries)
+            {
+                if (entry.Value.StartsWith("<script"))
+                {
+                    state.IsCode = false;
+                    state.IsScript = true;
+                }
+                
+                if (entry.FileType == AspFileEnum.CodeBehind)
+                {
+                    state.IsCode = true;
+                    HandleCodeState(ref state, entry);
+                    nodes.Add(entry);
+                    continue;
+                }
+
+                if (!state.IsCode || state.IsScript)
+                {
+                    nodes.Add(entry);
+                    if (entry.Value.StartsWith("</script>"))
+                        state.IsScript = false;
+                    continue;
+                }
+
+                entry.FileType = AspFileEnum.CodeBehind;
+                entry.TagType = GetTagType(entry, state);
+                nodes.Add(entry);
+
+            }
+
+            return nodes;
+        }
+
+        #endregion
+
+        #region "Phase IV - Add Code Function Name"
 
         private static List<Entry> LabelCodeFunctions(List<Entry> entries)
         {
@@ -506,7 +549,7 @@ namespace WebFormParser.Utility.Asp
             entry.GroupName = Entry.GetGroupName(entry.TagType);
 
             state.IsCode = isCode;
-            HandleCodeState(ref state, entry.Value);
+            HandleCodeState(ref state, entry);
 
             return entry;
         }
@@ -554,7 +597,7 @@ namespace WebFormParser.Utility.Asp
                 entry.GroupName = Entry.GetGroupName(entry.TagType);
             }
 
-            HandleCodeState(ref state, entry.Value);
+            HandleCodeState(ref state, entry);
         }
 
         #endregion
@@ -596,8 +639,25 @@ namespace WebFormParser.Utility.Asp
                 default:
                     return state.IsCode ? TagTypeEnum.CodeContent : TagTypeEnum.Content;
             }
+        }
 
-            ;
+        private static TagTypeEnum GetTagType(Entry entry, State state)
+        {
+            switch (entry.TagType)
+            {
+                case TagTypeEnum.Comment:
+                    return TagTypeEnum.Comment;
+                case TagTypeEnum.Open:
+                    return state.IsCode ? TagTypeEnum.CodeOpen : TagTypeEnum.Open;
+                case TagTypeEnum.Close:
+                    return state.IsCode ? TagTypeEnum.CodeClose : TagTypeEnum.Close;
+                case TagTypeEnum.Content:
+                    return state.IsCode ? TagTypeEnum.CodeContent : TagTypeEnum.Content;
+                case TagTypeEnum.Page:
+                    return TagTypeEnum.Page;
+            }
+
+            return TagTypeEnum.Content;
         }
 
         private static bool IsCode(string value)
@@ -611,8 +671,10 @@ namespace WebFormParser.Utility.Asp
             return isCode && !isPage;
         }
 
-        private static void HandleCodeState(ref State state, string block)
+        [DebuggerStepThrough]
+        private static void HandleCodeState(ref State state, Entry entry)
         {
+            var block = entry.InnerText;
             state.OpenCode += block.Count(f => f == '{');
             state.CloseCode += block.Count(f => f == '}');
             state.HandleCodeState(block);

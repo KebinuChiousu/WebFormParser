@@ -17,6 +17,7 @@ namespace WebFormParser.Utility.Asp
         public int CloseCode { get; set; }
         public int FuncCount { get; set; }
         public bool IsComment { get; set; }
+        public bool IsScript { get; set; }
 
         [System.Diagnostics.DebuggerStepThrough]
         public State()
