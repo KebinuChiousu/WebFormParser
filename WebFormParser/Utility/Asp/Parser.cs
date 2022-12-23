@@ -90,10 +90,42 @@ namespace WebFormParser.Utility.Asp
 
             if (lines.Length == 1)
                 return nodes;
+            
+            var aspx = input.Replace(Environment.NewLine, "");
+            aspx = aspx.Replace("<%--", "<!--");
+            aspx = aspx.Replace("--%>", "-->");
+            aspx = aspx.Replace("\t", "");
 
+            var preTag = aspx.Split("<").ToList();
+            preTag.RemoveAt(0);
+            
+            for (var idx = 0; idx < preTag.Count; idx++)
+                preTag[idx] = "<" + preTag[idx];
+
+            var tags = new List<string>();
+
+            foreach (var tag in preTag)
+            {
+                lines = tag.Split(">");
+                for (var idx2 = 0; idx2 < lines.Length; idx2++)
+                {
+                    var value = lines[idx2];
+                    if (value.StartsWith("<") || value == "--")
+                        lines[idx2] = value + ">";
+                }
+
+                foreach (var line in lines)
+                {
+                    var value = line.TrimStart().TrimEnd();
+                    if (value.Length == 0)
+                        continue;
+                    tags.Add(value);
+                }
+            }
+            
             var state = new State();
 
-            foreach (var line in lines)
+            foreach (var line in tags)
             {
                 var entry = new Entry();
                 if (line.StartsWith("<%") || state.IsCode)
@@ -169,6 +201,9 @@ namespace WebFormParser.Utility.Asp
 
             if (value.Contains("-->")) state.IsComment = false;
 
+            if (value.StartsWith("</"))
+                entry.TagType = TagTypeEnum.Close;
+
             return entry;
 
         }
@@ -240,9 +275,13 @@ namespace WebFormParser.Utility.Asp
             if (node.NodeType != NodeType.Element) return;
 
             var ele = (IElement)node;
-            var allProps = ele.GetType().GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).OrderBy(pi => pi.Name).ToList();
-            PropertyInfo propInfo = ele.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Instance).Single(pi => pi.Name == "Attributes");
-            IEnumerable<object> attributes = (IEnumerable<object>)propInfo.GetValue(ele, null);
+            var allProps = ele.GetType().
+                GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).
+                OrderBy(pi => pi.Name).ToList();
+            var propInfo = ele.GetType().
+                GetProperties(BindingFlags.NonPublic | BindingFlags.Instance).
+                Single(pi => pi.Name == "Attributes");
+            var attributes = (IEnumerable<object>)propInfo.GetValue(ele, null);
 
             var dict = new Dictionary<string, string>();
 
