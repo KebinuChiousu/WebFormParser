@@ -19,6 +19,49 @@ namespace WebFormParser.Utility
     public static class Util
     {
 
+        #region "RegEx Helpers"
+
+        private const RegexOptions Options = RegexOptions.Multiline | RegexOptions.Compiled;
+
+        public static List<Entry> GetRegexGroupMatches(string input, string pattern)
+        {
+            var nodes = new List<Entry>();
+            var regex = new Regex(pattern, Options);
+            var groupList = GetRegexGroupNames(regex);
+            var mc = regex.Matches(input); 
+            foreach (Match m in mc)
+            {
+                var groupName = GetGroupNameForMatch(groupList, m);
+                var matchValue = m.Value;
+                var entry = new Entry
+                {
+                    GroupName = groupName,
+                    Value = matchValue
+                };
+                nodes.Add(entry);
+            }
+
+            return nodes;
+        }
+
+        private static List<string> GetRegexGroupNames(Regex regex)
+        {
+            var groupList = regex.GetGroupNames().ToList();
+            return groupList.Where( t => !int.TryParse( t , out var i)).ToList();
+        }
+
+        private static string GetGroupNameForMatch(List<string> groupNames, Match m)
+        {
+            var ret = string.Empty;
+            var groupList = m.Groups.Keys.Where(t => m.Groups[t].Success).Where(t => !int.TryParse(t, out var i)).ToList();
+            if (groupList.Count > 0)
+                ret = groupList[0];
+
+            return ret;
+        }
+
+        #endregion
+
         #region "IO Helpers"
         public static IEnumerable<string> GetFiles(string path)
         {

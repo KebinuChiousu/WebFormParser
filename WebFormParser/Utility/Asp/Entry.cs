@@ -47,6 +47,7 @@ public class Entry
         InnerText = "";
         Value = "";
         FileType = AspFileEnum.Html;
+        TagType = TagTypeEnum.Content;
         Attributes = new Dictionary<string, string>();
         Children = new List<Entry>();
     }

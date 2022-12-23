@@ -110,7 +110,7 @@ namespace WebFormParser.Utility.Asp
                 for (var idx2 = 0; idx2 < lines.Length; idx2++)
                 {
                     var value = lines[idx2];
-                    if (value.StartsWith("<") || value == "--")
+                    if ((value.StartsWith("<") || value == "--") && (!value.StartsWith("<!") || value.EndsWith("--")))
                         lines[idx2] = value + ">";
                 }
 
@@ -136,12 +136,36 @@ namespace WebFormParser.Utility.Asp
                 }
                 entry.Value = line;
                 entry.InnerText = line;
+                ClassifyNode(ref entry);
                 nodes.Add(entry);
             }
 
             nodes = CategorizeNodes(nodes);
 
             return nodes;
+        }
+
+        public static void ClassifyNode(ref Entry entry)
+        {
+            const string pattern = @"(?'open'<[a-zA-Z]+\s[0-9A-Za-z=""' ]+|<[A-Za-z]+>|<[A-Za-z]+\s)|(?'close'</[A-Za-z]+>|</[A-Za-z]+>)|(?'comment'<!--.+-->|<!--[\s\S.]+-->)";
+            var result = Util.GetRegexGroupMatches(entry.Value, pattern);
+
+            if (result.Count == 0)
+                return;
+
+            result[0].InnerText = entry.InnerText;
+
+            entry = result[0];
+
+            entry.Value = entry.InnerText;
+
+            entry.TagType = entry.GroupName switch
+            {
+                "open" => TagTypeEnum.Open,
+                "close" => TagTypeEnum.Close,
+                "comment" => TagTypeEnum.Comment,
+                _ => TagTypeEnum.Content
+            };
         }
 
         public static List<Entry> CategorizeNodes(List<Entry> entries)
@@ -152,34 +176,27 @@ namespace WebFormParser.Utility.Asp
 
             foreach (var entry in entries)
             {
-                var value = entry.Value;
-
-                if (value.Length <= 2)
-                    continue;
-
-                switch (entry.FileType)
-                {
-                    case AspFileEnum.CodeBehind:
-                        nodes.Add(HandleCodeNode(ref state, entry));
-                        break;
-                    default:
-                        nodes.Add(HandleHtmlNode(ref state, entry));
-                        break;
-                }
+                var node = entry;
+                node = HandleNode(ref state, entry);
+                nodes.Add(node);
             }
 
             return nodes;
         }
 
-        public static Entry HandleCodeNode(ref State state, Entry entry)
+        public static Entry HandleNode(ref State state, Entry entry)
         {
             var value = entry.Value;
+            state.IsCode = entry.FileType == AspFileEnum.CodeBehind;
 
-            if (value.StartsWith("<%--")) state.IsComment = true;
+            if (value.StartsWith("<!--")) state.IsComment = true;
 
-            entry.TagType = (state.IsComment) ? TagTypeEnum.CodeComment : TagTypeEnum.CodeContent;
-
-            if (value.Contains("--%>")) state.IsComment = false;
+            if (state.IsCode)
+                entry.TagType = (state.IsComment) ? TagTypeEnum.CodeComment : TagTypeEnum.CodeContent;
+            else
+                entry.TagType = (state.IsComment) ? TagTypeEnum.Comment: TagTypeEnum.Content;
+                                                                                             
+            if (value.Contains("-->")) state.IsComment = false;
 
             if (!value.StartsWith("<%@ Page"))
                 return entry;
@@ -189,23 +206,6 @@ namespace WebFormParser.Utility.Asp
             entry.TagType = TagTypeEnum.Page;
 
             return entry;
-        }
-
-        public static Entry HandleHtmlNode(ref State state, Entry entry)
-        {
-            var value = entry.Value;
-
-            if (value.StartsWith("<!--")) state.IsComment = true;
-
-            entry.TagType = (state.IsComment) ? TagTypeEnum.Comment : TagTypeEnum.Content;
-
-            if (value.Contains("-->")) state.IsComment = false;
-
-            if (value.StartsWith("</"))
-                entry.TagType = TagTypeEnum.Close;
-
-            return entry;
-
         }
 
         #endregion
@@ -425,6 +425,9 @@ namespace WebFormParser.Utility.Asp
                 entryCount--;
                 nodes.Add(entry);
             }
+
+            if (nodes.Count == 0)
+                return nodes;
 
             if (nodes[^1].TagType != TagTypeEnum.Content)
                 return nodes;
