@@ -20,10 +20,12 @@ namespace WebFormParser.Utility
             var pages = Util.GetPageList(src);
             Util.MakeFolders(pages, src, dest);
 
+            var pageCnt = 1;
+            double percent = 0;
             foreach (var page in pages)
             {
-                Console.WriteLine(page);
-
+                percent = ((double)pageCnt / (double)pages.Count);
+                Console.WriteLine($"Page: {pageCnt} of {pages.Count} ({percent:P2}) - {page}");
                 var input = File.ReadAllText(page);
 
                 var entries = Asp.Parser.ParseDocument(input);
@@ -45,6 +47,8 @@ namespace WebFormParser.Utility
 
                 Util.WriteFile(htmlList, src, dest, page);
                 Util.WriteFile(codeList, src, dest, page + ".cs");
+
+                pageCnt++;
             }
 
             Program.Stage++;
