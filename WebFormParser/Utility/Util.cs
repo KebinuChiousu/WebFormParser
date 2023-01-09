@@ -28,7 +28,7 @@ namespace WebFormParser.Utility
             var nodes = new List<Entry>();
             var regex = new Regex(pattern, Options);
             var groupList = GetRegexGroupNames(regex);
-            var mc = regex.Matches(input); 
+            var mc = regex.Matches(input);
             foreach (Match m in mc)
             {
                 var groupName = GetGroupNameForMatch(groupList, m);
@@ -47,7 +47,7 @@ namespace WebFormParser.Utility
         private static List<string> GetRegexGroupNames(Regex regex)
         {
             var groupList = regex.GetGroupNames().ToList();
-            return groupList.Where( t => !int.TryParse( t , out var i)).ToList();
+            return groupList.Where(t => !int.TryParse(t, out var i)).ToList();
         }
 
         private static string GetGroupNameForMatch(List<string> groupNames, Match m)
@@ -63,6 +63,25 @@ namespace WebFormParser.Utility
         #endregion
 
         #region "IO Helpers"
+
+        public static bool IsExcluded(IEnumerable<string> exclusions, string rootPath, string filename)
+        {
+            var search = filename.Replace(string.Concat(rootPath, "\\"),"");
+            var result = exclusions.FirstOrDefault(e => e.Equals(search));
+            return (!string.IsNullOrEmpty(result));
+        }
+
+        public static List<string> GetExcludedFiles(string path)
+        {
+            var exclusionFile = string.Concat(path, "\\", ".parserignore");
+
+            if (!File.Exists(exclusionFile))
+                return new List<string>();
+
+            var excluded = File.ReadAllLines(exclusionFile).ToList();
+            return excluded;
+        }
+
         public static IEnumerable<string> GetFiles(string path)
         {
             Queue<string> queue = new();
@@ -161,7 +180,7 @@ namespace WebFormParser.Utility
         #endregion
 
         #region "Debug ASPX Code"
-        
+
         public static void PrintAspNodeTree(List<Entry> entries)
         {
             Console.WriteLine("ASP Node Tree:");
@@ -246,12 +265,16 @@ namespace WebFormParser.Utility
         {
             List<string> result = new();
 
+            var excluded = GetExcludedFiles(targetFolder);
+
             foreach (var fileName in Util.GetFiles(targetFolder))
             {
                 var extension = Path.GetExtension(fileName);
                 var validExtension = ext;
                 if (validExtension.Equals(extension))
                 {
+                    if (IsExcluded(excluded, targetFolder, fileName))
+                        continue;
                     result.Add(fileName);
                 }
             }
@@ -414,7 +437,7 @@ namespace WebFormParser.Utility
 
             var assy = string.IsNullOrEmpty(assembly) ? Assembly.GetExecutingAssembly() : Assembly.Load(assembly);
             var assyName = string.IsNullOrEmpty(assembly) ? GetAssemblyName(ref assy) : assembly;
-            var resPath = string.Concat(assyName, ".", RESOURCES, "."); 
+            var resPath = string.Concat(assyName, ".", RESOURCES, ".");
             resPath = string.IsNullOrEmpty(resFolder) ? resPath : string.Concat(resPath, resFolder, ".");
             var files = assy.GetManifestResourceNames();
             var resName = GetResourceName(assy.GetManifestResourceNames(), resPath, fileName);
