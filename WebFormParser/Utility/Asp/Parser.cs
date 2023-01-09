@@ -141,10 +141,22 @@ namespace WebFormParser.Utility.Asp
                 nodes[idx] = entry;
             }
 
+            var tempNodes = new List<Entry>();
 
+            for (var idx = 0; idx < nodes.Count; idx++)
+            {
+                var entry = nodes[idx];
 
-            // SplitCodeLine(ref nodes, ref state, entry);
-            // continue;
+                if (entry.FileType == AspFileEnum.Html)
+                {
+                    tempNodes.Add(entry);
+                    continue;
+                }
+
+                SplitCodeLine(ref tempNodes, ref state, entry);
+            }
+
+            nodes = tempNodes;
 
             nodes = CategorizeNodes(nodes);
 
