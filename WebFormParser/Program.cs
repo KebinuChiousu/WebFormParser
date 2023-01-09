@@ -95,7 +95,5 @@ namespace WebFormParser
         {
             Demo.PrintClassicNodes();
         }
-
-
     }
 }

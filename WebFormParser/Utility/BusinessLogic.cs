@@ -22,9 +22,15 @@ namespace WebFormParser.Utility
 
             var pageCnt = 1;
             double percent = 0;
+            var dtSessionStart = DateTime.Now;
+            var dtEnd = DateTime.Now;
+            TimeSpan diffDate; 
+            double seconds = 0;
             foreach (var page in pages)
             {
+                var dtStart = DateTime.Now;
                 percent = ((double)pageCnt / (double)pages.Count);
+
                 Console.WriteLine($"Page: {pageCnt} of {pages.Count} ({percent:P2}) - {page}");
                 var input = File.ReadAllText(page);
 
@@ -48,8 +54,16 @@ namespace WebFormParser.Utility
                 Util.WriteFile(htmlList, src, dest, page);
                 Util.WriteFile(codeList, src, dest, page + ".cs");
 
+                dtEnd = DateTime.Now;
+                diffDate = dtEnd - dtStart;
+                Console.WriteLine($"Page Processing Time: {diffDate.TotalSeconds:F} seconds.");
+
+
                 pageCnt++;
             }
+
+            diffDate = dtEnd - dtSessionStart;
+            Console.WriteLine($"Processing Complete: {diffDate.TotalSeconds:F} seconds.");
 
             Program.Stage++;
         }
