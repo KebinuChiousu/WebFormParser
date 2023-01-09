@@ -106,6 +106,8 @@ public class Entry
             TagTypeEnum.Close => "tagClose",
             TagTypeEnum.Attr => "tagAttr",
             TagTypeEnum.Value => "tagValue",
+            TagTypeEnum.Script => "script",
+            TagTypeEnum.DocType => "docType",
             TagTypeEnum.Page => "page",
             TagTypeEnum.CodeComment => "codeComment",
             TagTypeEnum.CodeOpen => "codeOpen",

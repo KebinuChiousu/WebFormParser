@@ -52,7 +52,7 @@ namespace WebFormParser.Utility.Asp
         private static void BypassComments(ref List<Entry> entries)
         {
             var entryCount = entries.Count;
-            
+
             for (var idx = 0; idx < entryCount; idx++)
             {
                 var entry = entries[idx];
@@ -90,23 +90,85 @@ namespace WebFormParser.Utility.Asp
 
             if (lines.Length == 1)
                 return nodes;
-            
+
             var aspx = input.Replace(Environment.NewLine, "");
             aspx = aspx.Replace("<%--", "<!--");
             aspx = aspx.Replace("--%>", "-->");
             aspx = aspx.Replace("\t", "");
 
-            var preTag = aspx.Split("<").ToList();
-            preTag.RemoveAt(0);
-            
-            for (var idx = 0; idx < preTag.Count; idx++)
-                preTag[idx] = "<" + preTag[idx];
+            // Split on "<" bracket.
+            var preTags = SplitOpenTag(aspx);
+            // Split on ">" bracket.
+            var tags = SplitCloseTag(preTags);
+            var state = new State();
 
+            foreach (var line in tags)
+            {
+                var entry = new Entry();
+                if (line.StartsWith("<script"))
+                    state.IsScript = true;
+                if (state.IsScript)
+                    entry.TagType = TagTypeEnum.Script;
+                if (line.StartsWith("</script"))
+                    state.IsScript = false;
+                entry.Value = line;
+                entry.InnerText = line;
+                nodes.Add(entry);
+            }
+
+            for (var idx = 0; idx < nodes.Count; idx++)
+            {
+                var entry = nodes[idx];
+                if (entry.TagType == TagTypeEnum.Script)
+                    continue;
+
+                var line = entry.Value;
+
+                var isCode = line.StartsWith("<%") || state.IsCode;
+
+                switch (isCode)
+                {
+                    case true:
+                        entry.FileType = AspFileEnum.CodeBehind;
+                        state.IsCode = true;
+                        HandleCodeState(ref state, entry);
+                        break;
+                    case false:
+                        ClassifyNode(ref entry);
+                        break;
+                }
+
+                nodes[idx] = entry;
+            }
+
+
+
+            // SplitCodeLine(ref nodes, ref state, entry);
+            // continue;
+
+            nodes = CategorizeNodes(nodes);
+
+            return nodes;
+        }
+
+        private static List<string> SplitOpenTag(string input)
+        {
+            var lines = input.Split("<").ToList();
+            lines.RemoveAt(0);
+
+            for (var idx = 0; idx < lines.Count; idx++)
+                lines[idx] = "<" + lines[idx];
+
+            return lines;
+        }
+
+        private static List<string> SplitCloseTag(List<string> input)
+        {
             var tags = new List<string>();
 
-            foreach (var tag in preTag)
+            foreach (var tag in input)
             {
-                lines = tag.Split(">");
+                var lines = tag.Split(">");
                 for (var idx2 = 0; idx2 < lines.Length; idx2++)
                 {
                     var value = lines[idx2];
@@ -122,27 +184,38 @@ namespace WebFormParser.Utility.Asp
                     tags.Add(value);
                 }
             }
-            
-            var state = new State();
 
-            foreach (var line in tags)
+            return tags;
+        }
+
+        private static void SplitCodeLine(ref List<Entry> nodes, ref State state, Entry entry)
+        {
+            var codeBlock = entry.Value;
+            var blocks = codeBlock.Split(";").ToList();
+
+            if (codeBlock.StartsWith("<") || !codeBlock.Contains(";"))
             {
-                var entry = new Entry();
-                if (line.StartsWith("<%") || state.IsCode)
-                {
-                    entry.FileType = AspFileEnum.CodeBehind;
-                    state.IsCode = true;
-                }
-                entry.Value = line;
-                entry.InnerText = line;
-                HandleCodeState(ref state, entry);
-                ClassifyNode(ref entry);
                 nodes.Add(entry);
+                return;
             }
 
-            nodes = CategorizeNodes(nodes);
+            if (blocks.Count <= 2)
+            {
+                HandleCodeState(ref state, entry);
+                nodes.Add(entry);
+                return;
+            }
 
-            return nodes;
+            foreach (var block in blocks)
+            {
+                var newEntry = entry;
+                var value = block.Replace("\"\\r\\n\"", "Environment.NewLine");
+                value = value + ";";
+                newEntry.Value = value;
+                newEntry.InnerText = value;
+                HandleCodeState(ref state, newEntry);
+                nodes.Add(entry);
+            }
         }
 
         public static void ClassifyNode(ref Entry entry)
@@ -186,16 +259,25 @@ namespace WebFormParser.Utility.Asp
 
         public static Entry HandleNode(ref State state, Entry entry)
         {
+            if (entry.TagType == TagTypeEnum.Script)
+                return entry;
+            
             var value = entry.Value;
             state.IsCode = entry.FileType == AspFileEnum.CodeBehind;
+
+            if (entry.Value.Contains("//"))
+            {
+                entry.FileType = AspFileEnum.CodeBehind;
+                state.IsCode = true;
+            }
 
             if (value.StartsWith("<!--")) state.IsComment = true;
 
             if (state.IsCode)
                 entry.TagType = (state.IsComment) ? TagTypeEnum.CodeComment : TagTypeEnum.CodeContent;
             else
-                entry.TagType = (state.IsComment) ? TagTypeEnum.Comment: TagTypeEnum.Content;
-                                                                                             
+                entry.TagType = (state.IsComment) ? TagTypeEnum.Comment : TagTypeEnum.Content;
+
             if (value.Contains("-->")) state.IsComment = false;
 
             if (!value.StartsWith("<%@ Page"))
@@ -237,7 +319,7 @@ namespace WebFormParser.Utility.Asp
 
             if (htmlDoc.Body == null)
                 return;
-            
+
             if (!htmlDoc.HasChildNodes)
                 return;
 
@@ -295,7 +377,8 @@ namespace WebFormParser.Utility.Asp
         }
 
         private static void HandleNode(ref List<Entry> entries, ref State state, INode? node)
-        { ;
+        {
+            ;
             if (node == null)
                 return;
 
@@ -390,7 +473,7 @@ namespace WebFormParser.Utility.Asp
                     state.IsCode = false;
                     state.IsScript = true;
                 }
-                
+
                 if (entry.FileType == AspFileEnum.CodeBehind)
                 {
                     state.IsCode = true;
@@ -463,7 +546,7 @@ namespace WebFormParser.Utility.Asp
                     continue;
                 }
 
-                entry.Children.Add(entries[idx +1]);
+                entry.Children.Add(entries[idx + 1]);
                 entries.RemoveAt(idx + 1);
                 entryCount--;
                 nodes.Add(entry);
