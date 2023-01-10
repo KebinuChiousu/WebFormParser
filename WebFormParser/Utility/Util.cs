@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -23,6 +24,7 @@ namespace WebFormParser.Utility
 
         private const RegexOptions Options = RegexOptions.Multiline | RegexOptions.Compiled;
 
+        [DebuggerStepThrough]
         public static List<Entry> GetRegexGroupMatches(string input, string pattern)
         {
             var nodes = new List<Entry>();
@@ -44,12 +46,14 @@ namespace WebFormParser.Utility
             return nodes;
         }
 
+        [DebuggerStepThrough]
         private static List<string> GetRegexGroupNames(Regex regex)
         {
             var groupList = regex.GetGroupNames().ToList();
             return groupList.Where(t => !int.TryParse(t, out var i)).ToList();
         }
 
+        [DebuggerStepThrough]
         private static string GetGroupNameForMatch(List<string> groupNames, Match m)
         {
             var ret = string.Empty;
