@@ -429,6 +429,21 @@ namespace WebFormParser.Utility.Asp
 
         #region "Html Generation"
 
+        private static string RenderEntry(Entry entry)
+        {
+            var html = new StringBuilder();
+
+            html.Append(FormatHtml(entry));
+            html.Append(Environment.NewLine);
+            foreach (var child in entry.Children)
+            {
+                html.Append(FormatHtml(child));
+                html.Append(Environment.NewLine);
+            }
+
+            return html.ToString();
+        }
+
         private static List<string> GenHtmlFile(ref List<Entry> htmlDom)
         {
             var ret = new List<string>();
@@ -445,7 +460,7 @@ namespace WebFormParser.Utility.Asp
                     if (entry.TagType is TagTypeEnum.Close or TagTypeEnum.Open)
                         if (entry.Value.TrimStart().Length > 2)
                             RenderBlock(ref ret, ref block);
-                    block.Append(FormatHtml(entry));
+                    block.Append(RenderEntry(entry));
                 }
                 else
                 {
@@ -510,9 +525,9 @@ namespace WebFormParser.Utility.Asp
                 case TagTypeEnum.Open:
                     return RenderHtmlTag(entry);
                 case TagTypeEnum.CodeOpen:
-                    return (entry.HasAttributes) ? $"<{entry.Value} " : $"<{entry.Value}>";
+                    return (entry.HasAttributes) ? $"<{entry.Name} " : $"<{entry.Name}>";
                 case TagTypeEnum.CodeClose:
-                    return entry.SelfClosing ? entry.Value : $"</{entry.Value}>";
+                    return entry.SelfClosing ? entry.Name : $"</{entry.Name}>";
                 default:
                     return entry.Value;
             }
@@ -527,7 +542,7 @@ namespace WebFormParser.Utility.Asp
 
             var html = new StringBuilder();
 
-            html.Append($"<{entry.Value}");
+            html.Append($"<{entry.Name}");
 
             if (entry.HasAttributes)
             {
