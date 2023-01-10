@@ -14,6 +14,32 @@ public class Entry
     public string? CodeFunction { get; set; }
     public bool IsOpen { get; set; }
 
+    public string Name 
+    {
+        get
+        {
+            if (this.FileType == AspFileEnum.CodeBehind)
+                return string.Empty;
+            return this.TagType == TagTypeEnum.Open ? GetEntryName(this.Value) : string.Empty;
+        }
+    }
+
+    private static string GetEntryName(string value)
+    {
+        var source = value;
+        // strip <
+        source= source.Replace("<", "");
+        // strip >
+        source= source.Replace(">", "");
+        // Remove whitespace from front
+        source = source.TrimStart();
+        // Split on whitespace
+        var tag = source.Split(" ").ToList();
+        // Get Tag name (text after <)
+        var name = tag[0].ToLower();
+        return name;
+    }
+
     public bool NeedsChildren
     {
         get { return RequiresChildren();  }
@@ -68,7 +94,7 @@ public class Entry
     {
         var tags = new List<string>
         {
-            "select"
+            "form", "select", "table", "tr", "td", "div"
         };
 
         return tags.Contains(Value.ToLower());
@@ -122,8 +148,13 @@ public class Entry
     [DebuggerStepThrough]
     public override string ToString()
     {
-        string fileType = GetFileType(this.FileType);
-
-        return fileType + " - " + GetGroupName(this.TagType);
+        var fileType = GetFileType(this.FileType);
+        var output = fileType + " | " + GetGroupName(this.TagType) + " | ";
+        if (!string.IsNullOrEmpty(this.Name))
+            output += this.Name + " | ";
+        if (!string.IsNullOrEmpty(this.CodeFunction))
+            output += this.CodeFunction + " | ";
+        output += this.Value + " |";
+        return output;
     }
 }
