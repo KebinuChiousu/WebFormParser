@@ -34,7 +34,7 @@ namespace WebFormParser.Utility
                 Console.WriteLine($"Page: {pageCnt} of {pages.Count} ({percent:P2}) - {page}");
                 var input = File.ReadAllText(page);
 
-                var entries = Asp.Parser.ParseDocument(input);
+                var entries = Asp.Parser.ParseDocument(input, page);
                 var htmlList = Asp.CodeGen.Generate(ref entries, mode: AspFileEnum.Html);
 
                 if (htmlList.Count == 0)
