@@ -1,23 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using WebFormParser.model;
 using WebFormParser.Utility.Asp.Enum;
-using AngleSharp;
 using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using HtmlAgilityPack;
 using System.Reflection;
-using System.Reflection.Metadata;
 
 namespace WebFormParser.Utility.Asp
 {
@@ -25,20 +12,27 @@ namespace WebFormParser.Utility.Asp
     {
         private const RegexOptions Options = RegexOptions.Multiline | RegexOptions.Compiled;
 
-        public static List<Entry> ParseDocument(string input)
+        public static List<Entry> ParseDocument(string input, string page = "")
         {
             // Phase I - Identify Lines
-            var nodes = ParseLines(input);
+            var nodes = ParseLines(input, page);
 
             if (nodes.Count == 0)
                 return nodes;
 
+            /*
+            // nodes = ProcessScriptBlocks(nodes, page);
+
             // Phase II - Identify Html
-            nodes = ParseHtml(nodes);
-            BypassComments(ref nodes);
+            // nodes = ParseHtml(nodes);
+            // BypassComments(ref nodes);
 
             // Phase III - Identify Html that should be treated as code
-            nodes = UpdateNodeClassification(nodes);
+            // nodes = UpdateNodeClassification(nodes);
+            */
+
+            if (page.EndsWith("apps\\admin\\frm_mngAccounts.aspx"))
+                System.Diagnostics.Debugger.Break();
 
             // Phase IV - Add Code Function Names
             nodes = LabelCodeFunctions(nodes);
@@ -46,9 +40,12 @@ namespace WebFormParser.Utility.Asp
             // Phase V - Consolidate Node List
             nodes = ConsolidateNodes(nodes);
 
+            
+
             return nodes;
         }
 
+        /*
         private static void BypassComments(ref List<Entry> entries)
         {
             var entryCount = entries.Count;
@@ -80,10 +77,228 @@ namespace WebFormParser.Utility.Asp
                 entryCount--;
             }
         }
+        */
 
         #region "Phase I - Identify Lines"
 
-        private static List<Entry> ParseLines(string input)
+        /// <summary>
+        /// Iterate through aspx lines and classify as comment or content.
+        /// </summary>
+        /// <param name="blocks">HTML blocks to append to</param>
+        /// <param name="stmt">Current statement being processed</param>
+        /// <param name="state">Global state between HTML blocks.</param>
+        private static void ProcessLine(ref List<Entry> blocks, string stmt, ref State state)
+        {
+            var line = stmt.Replace("\t", "");
+            line = line.TrimStart();
+            var entry = new Entry();
+
+            if (line == "")
+                return;
+
+            state.IsComment = stmt.StartsWith("<%--") || stmt.StartsWith("<!--") || state.IsComment;
+
+            entry.Value = line;
+
+            if (state.IsComment)
+                entry.TagType = TagTypeEnum.Comment;
+
+            if (line.EndsWith("-->") || line.EndsWith("--%>"))
+                state.IsComment = false;
+
+            var temp = stmt.Split("-->").ToList();
+            if (temp.Count > 1)
+                if (temp[1].Length > 0)
+                    entry.Value = temp[1];
+
+            entry.InnerText = entry.Value;
+
+            blocks.Add(entry);
+        }
+
+        /// <summary>
+        /// Process lines of aspx file and identify code.
+        /// </summary>
+        /// <param name="blocks">HTML blocks to update</param>
+        /// <param name="state">Global state between HTML blocks.</param>
+        private static List<Entry> ProcessLine2(List<Entry> blocks, ref State state)
+        {
+            var nodes = new List<Entry>();
+
+            for (var idx = 0; idx < blocks.Count; idx++)
+            {
+                var block = blocks[idx];
+                var stmt = block.Value;
+
+                state.IsCode = stmt.StartsWith("<%") || state.IsCode;
+
+                if (!state.IsCode || block.TagType == TagTypeEnum.Comment)
+                {
+                    nodes.Add(block);
+                    continue;
+                }
+
+                if (stmt.StartsWith("<%@"))
+                {
+                    state.IsCode = false;
+                    block.TagType = TagTypeEnum.Page;
+                    nodes.Add(block);
+                    continue;
+                }
+
+                block.FileType = AspFileEnum.CodeBehind;
+                var open = stmt.StartsWith("<%");
+                var close = stmt.TrimEnd().EndsWith("%>");
+                block.TagType = open ? TagTypeEnum.CodeOpen : TagTypeEnum.CodeContent;
+                
+                // if (close && !open && (state.OpenCode != state.CloseCode))
+                //    System.Diagnostics.Debugger.Break();
+                
+                HandleCodeState(ref state, block);
+                nodes.Add(block);
+            }
+
+            return nodes;
+        }
+
+        /// <summary>
+        /// Iterate through blocks and classify script tags.
+        /// </summary>
+        /// <param name="blocks">HTML blocks to update</param>
+        /// <param name="state">Global state between HTML blocks.</param>
+        private static void ProcessLine3(ref List<Entry> blocks, ref State state)
+        {
+            for (var idx = 0; idx < blocks.Count; idx++)
+            {
+                var block = blocks[idx];
+                var stmt = block.Value;
+
+                state.IsScript = stmt.StartsWith("<script") || state.IsScript;
+
+                if (!state.IsScript || block.TagType == TagTypeEnum.Comment)
+                    continue;
+
+                var open = stmt.StartsWith("<script");
+
+                block.TagType = open ? TagTypeEnum.Open : TagTypeEnum.Script;
+
+                if (stmt.StartsWith("</script>"))
+                    state.IsScript = false;
+
+                blocks[idx] = block;
+            }
+        }
+
+        private static void ProcessLine4(ref List<Entry> blocks)
+        {
+            for (var idx = 0; idx < blocks.Count; idx++)
+            {
+                var block = blocks[idx];
+                if (block.FileType == AspFileEnum.CodeBehind)
+                    continue;
+                if (block.TagType != TagTypeEnum.Content)
+                    continue;
+
+                ClassifyNode(ref block);
+                blocks[idx] = block;
+            }
+        }
+
+        /// <summary>
+        /// Split Multi-Line code blocks by given delimiter
+        /// </summary>
+        /// <param name="nodes">List HTML nodes to iterate through.</param>
+        /// <param name="state">Global state of HTML blocks</param>
+        /// <param name="delimiter">delimiter to split on</param>
+        /// <returns>Update List of HTML blocks.</returns>
+        private static List<Entry> SplitCodeBlocks(List<Entry> nodes, ref State state, string delimiter)
+        {
+            var tempNodes = new List<Entry>();
+            foreach (var entry in nodes)
+            {
+                if (entry.FileType == AspFileEnum.Html || entry.TagType == TagTypeEnum.Comment)
+                {
+                    tempNodes.Add(entry);
+                    continue;
+                }
+                SplitCodeLine(ref tempNodes, ref state, entry, delimiter);
+            }
+            return tempNodes;
+        }
+
+        #region "Merge Common Nodes"
+
+        [DebuggerStepThrough]
+        private static bool HasChildren(Entry entry)
+        {
+            var tagType = entry.TagType;
+            var check = (tagType == TagTypeEnum.CodeOpen);
+            check = check || (tagType == TagTypeEnum.Open);
+            check = check || (tagType == TagTypeEnum.Comment);
+            return check;
+        }
+
+        [DebuggerStepThrough]
+        private static bool GetOpenTagType(Entry entry)
+        {
+            var check = entry.TagType switch
+            {
+                TagTypeEnum.Content => true,
+                TagTypeEnum.Script => true,
+                _ => false
+            };
+            return check;
+        }
+
+        [DebuggerStepThrough]
+        private static bool IsChild(Entry prevEntry, Entry entry)
+        {
+            var check = prevEntry.TagType switch
+            {
+                TagTypeEnum.Comment => entry.TagType == TagTypeEnum.Comment,
+                TagTypeEnum.Open => GetOpenTagType(entry),
+                TagTypeEnum.CodeOpen => entry.TagType == TagTypeEnum.CodeContent,
+                _ => false
+            };
+            return check;
+        }
+
+        
+
+        /// <summary>
+        /// Merge common nodes into parent child list.
+        /// </summary>
+        /// <param name="nodes"></param>
+        /// <returns>List of Merged HTML blocks</returns>
+        private static List<Entry> MergeNodes(List<Entry> nodes)
+        {
+            var htmlBlocks = new List<Entry> { nodes[0] };
+            for (var idx = 1; idx < nodes.Count; idx++)
+            {
+                var prevNode = htmlBlocks[^1];
+                var node = nodes[idx];
+                if (HasChildren(prevNode))
+                {
+                    if (IsChild(prevNode, node))
+                    {
+                        prevNode.Children.Add(node);
+                        continue;
+                    }
+                }
+                htmlBlocks.Add(node);
+            }
+            return htmlBlocks;
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Process each line in the aspx file.
+        /// </summary>
+        /// <param name="input">The aspx text to process.</param>
+        /// <param name="page">Name of the page being processed.</param>
+        /// <returns>Returns list of HTML blocks.</returns>
+        private static List<Entry> ParseLines(string input, string page)
         {
             var nodes = new List<Entry>();
             var lines = input.Split(Environment.NewLine);
@@ -92,92 +307,49 @@ namespace WebFormParser.Utility.Asp
                 return nodes;
 
             var aspx = input.Replace(Environment.NewLine, "");
-            aspx = aspx.Replace("<%--", "<!--");
-            aspx = aspx.Replace("--%>", "-->");
-            aspx = aspx.Replace("\t", "");
-
-            // Split on "<" bracket.
-            var preTags = SplitOpenTag(aspx);
-            // Split on ">" bracket.
-            var tags = SplitCloseTag(preTags);
             var state = new State();
 
-            foreach (var line in tags)
-            {
-                var entry = new Entry();
-                if (line.StartsWith("<script"))
-                    state.IsScript = true;
-                if (state.IsScript)
-                    entry.TagType = TagTypeEnum.Script;
-                if (line.StartsWith("</script"))
-                    state.IsScript = false;
-                entry.Value = line;
-                entry.InnerText = line;
-                nodes.Add(entry);
-            }
+            // Categorize as Comment or Content
+            foreach (var line in lines)
+                ProcessLine(ref nodes, line, ref state);
 
-            for (var idx = 0; idx < nodes.Count; idx++)
-            {
-                var entry = nodes[idx];
-                if (entry.TagType == TagTypeEnum.Script)
-                    continue;
-
-                var line = entry.Value;
-
-                var isCode = line.StartsWith("<%") || state.IsCode;
-
-                switch (isCode)
-                {
-                    case true:
-                        entry.FileType = AspFileEnum.CodeBehind;
-                        state.IsCode = true;
-                        HandleCodeState(ref state, entry);
-                        break;
-                    case false:
-                        ClassifyNode(ref entry);
-                        break;
-                }
-
-                nodes[idx] = entry;
-            }
-
-            var tempNodes = new List<Entry>();
-
-            for (var idx = 0; idx < nodes.Count; idx++)
-            {
-                var entry = nodes[idx];
-
-                if (entry.FileType == AspFileEnum.Html)
-                {
-                    tempNodes.Add(entry);
-                    continue;
-                }
-
-                SplitCodeLine(ref tempNodes, ref state, entry);
-            }
-
-            nodes = tempNodes;
-
-            nodes = CategorizeNodes(nodes);
+            // Categorize as Code
+            state.IsComment = false;
+            nodes = ProcessLine2(nodes, ref state);
+            // Categorize as Script
+            ProcessLine3(ref nodes, ref state);
+            // Classify HTML Nodes
+            ProcessLine4(ref nodes);
+            // Split code blocks on ";" delimiter
+            nodes = SplitCodeBlocks(nodes, ref state, ";");
+            // Consolidate common nodes;
+            nodes = MergeNodes(nodes);
 
             return nodes;
         }
 
+        #region "Split Code Tags <%  %>"
+
         private static List<string> SplitOpenTag(string input)
         {
             var lines = input.Split("<").ToList();
-            lines.RemoveAt(0);
+
+            var ret = new List<string>();
 
             for (var idx = 0; idx < lines.Count; idx++)
-                lines[idx] = "<" + lines[idx];
+            {
+                var line = lines[idx];
+                if (line.Length == 0)
+                    continue;
+                ret.Add("<" + lines[idx]);
+            }
 
-            return lines;
+            return ret;
         }
 
         private static List<string> SplitCloseTag(List<string> input)
         {
             var tags = new List<string>();
-
             foreach (var tag in input)
             {
                 var lines = tag.Split(">");
@@ -196,24 +368,46 @@ namespace WebFormParser.Utility.Asp
                     tags.Add(value);
                 }
             }
-
             return tags;
         }
 
-        private static void SplitCodeLine(ref List<Entry> nodes, ref State state, Entry entry)
+        #endregion
+
+        /// <summary>
+        /// Split Statement line on given delimiter
+        /// </summary>
+        /// <param name="nodes">List of HTML blocks to update.</param>
+        /// <param name="state">Global state of HTML blocks.</param>
+        /// <param name="entry">Current html block being processed.</param>
+        /// <param name="delimiter">Delimiter to split block on.</param>
+        private static void SplitCodeLine(
+            ref List<Entry> nodes, 
+            ref State state, 
+            Entry entry, 
+            string delimiter
+            )
         {
             var codeBlock = entry.Value;
-            var blocks = codeBlock.Split(";").ToList();
+            var blocks = codeBlock.Split(delimiter).ToList();
 
-            if (codeBlock.StartsWith("<") || !codeBlock.Contains(";"))
+            if (entry.Value.Contains("<%="))
             {
+                entry.FileType = AspFileEnum.Html;
+                entry.TagType = TagTypeEnum.Content;
                 nodes.Add(entry);
                 return;
             }
 
             if (blocks.Count <= 2)
             {
-                HandleCodeState(ref state, entry);
+                nodes.Add(entry);
+                return;
+            }
+
+            if (entry.Value.StartsWith("<"))
+            {
+                var close = entry.Value.StartsWith("</"); 
+                entry.TagType =  close ? TagTypeEnum.CodeClose : TagTypeEnum.CodeOpen;
                 nodes.Add(entry);
                 return;
             }
@@ -222,11 +416,16 @@ namespace WebFormParser.Utility.Asp
             {
                 var newEntry = entry;
                 var value = block.Replace("\"\\r\\n\"", "Environment.NewLine");
-                value = value + ";";
+                value = value.TrimStart().TrimEnd();
+
+                if (value == "")
+                    continue;
+
+                value += ";";
+                
                 newEntry.Value = value;
                 newEntry.InnerText = value;
-                HandleCodeState(ref state, newEntry);
-                nodes.Add(entry);
+                nodes.Add(newEntry);
             }
         }
 
@@ -253,6 +452,8 @@ namespace WebFormParser.Utility.Asp
             };
         }
 
+        /*
+
         public static List<Entry> CategorizeNodes(List<Entry> entries)
         {
             var nodes = new List<Entry>();
@@ -273,9 +474,8 @@ namespace WebFormParser.Utility.Asp
         {
             if (entry.TagType == TagTypeEnum.Script)
                 return entry;
-            
-            var value = entry.Value;
-            state.IsCode = entry.FileType == AspFileEnum.CodeBehind;
+
+            var value = entry.Value; state.IsCode = entry.FileType == AspFileEnum.CodeBehind;
 
             if (entry.Value.Contains("//"))
             {
@@ -302,6 +502,8 @@ namespace WebFormParser.Utility.Asp
             return entry;
         }
 
+        */
+
         #endregion
 
         #region "Phase II - Identify Html"
@@ -312,12 +514,11 @@ namespace WebFormParser.Utility.Asp
 
             foreach (var entry in entries)
             {
-                if (entry.FileType == AspFileEnum.CodeBehind || entry.TagType == TagTypeEnum.Page)
+                if (entry.FileType == AspFileEnum.CodeBehind)
                 {
                     nodes.Add(entry);
                     continue;
                 }
-
                 ParseHtmlFragment(ref nodes, entry.Value);
             }
 
@@ -517,13 +718,13 @@ namespace WebFormParser.Utility.Asp
 
         private static List<Entry> LabelCodeFunctions(List<Entry> entries)
         {
-            var nodes = new List<Entry>();
+            var nodes = new List<Entry>(){ entries[0] };
 
             var funcCount = 1;
 
             for (var idx = 1; idx < entries.Count; idx++)
             {
-                var prevEntry = entries[idx - 1];
+                var prevEntry = nodes[^1];
                 var entry = entries[idx];
 
                 if (entry.FileType == AspFileEnum.CodeBehind)
@@ -531,7 +732,7 @@ namespace WebFormParser.Utility.Asp
 
                 nodes.Add(entry);
 
-                if (entry.FileType == AspFileEnum.Html)
+                if (entry.FileType == AspFileEnum.Html && entry.TagType != TagTypeEnum.Comment)
                     if (prevEntry.FileType == AspFileEnum.CodeBehind)
                         funcCount++;
             }
